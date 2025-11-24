@@ -5,9 +5,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 
-**SOTA Python-based linter that ranks your code quality from 0-1000 based on Vibecoding vs Engineering patterns.**
-
-Stop vibecoding, start engineering. VibeGuard detects security issues, code smells, technical debt, UI/UX anti-patterns, and documentation flaws — then scores it objectively.
+Stop vibecoding, start engineering. 
 
 ---
 
