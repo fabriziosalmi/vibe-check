@@ -331,7 +331,7 @@ def write_summary(score, violations):
         md += "Your code is **pristine**. Perfect SOTA engineering vibes. 🚀\n\n"
 
     md += "---\n\n"
-    md += f"*Scanned with VibeGuard Auditor • Threshold: {INPUT_THRESHOLD} • [Learn More](https://github.com/fabriziosalmi/vibeguard-action)*\n"
+    md += f"*Scanned with VibeGuard Auditor • Threshold: {INPUT_THRESHOLD} • [Learn More](https://github.com/fabriziosalmi/vibe-check)*\n"
 
     with open(summary_file, "a") as f:
         f.write(md)
