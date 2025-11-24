@@ -1,6 +1,6 @@
 name: 'VibeGuard Auditor'
 description: 'SOTA Python-based linter that ranks your code quality based on Vibecoding vs Engineering patterns. Detects security issues, code smells, and technical debt.'
-author: 'fab'
+author: 'fabriziosalmi'
 branding:
   icon: 'shield'
   color: 'purple'

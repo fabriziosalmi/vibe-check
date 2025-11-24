@@ -7,18 +7,19 @@
 
 **SOTA Python-based linter that ranks your code quality from 0-1000 based on Vibecoding vs Engineering patterns.**
 
-Stop vibecoding, start engineering. VibeGuard detects security issues, code smells, technical debt, and anti-patterns in your codebase — then scores it objectively.
+Stop vibecoding, start engineering. VibeGuard detects security issues, code smells, technical debt, UI/UX anti-patterns, and documentation flaws — then scores it objectively.
 
 ---
 
 ## 🚀 Features
 
 - **🎯 Objective Scoring**: Your code starts at 1000 points. Every violation deducts points based on severity
-- **🔒 Security First**: Detects hardcoded secrets, SQL injection patterns, dangerous eval() usage
+- **🔒 Security First**: Detects hardcoded secrets, SQL injection patterns, dangerous eval() usage, chmod 777
 - **⚡ Native GitHub Integration**: Beautiful job summaries, inline file annotations, and actionable feedback
 - **🐳 Zero Config**: Runs in Docker — works on any runner (Ubuntu, Windows, macOS)
-- **📊 100+ Rules**: Covers security, stability, maintainability, performance, testing, and more
-- **🎨 Categorized Reports**: Violations grouped by type (Security, Code Smells, Hygiene, etc.)
+- **📊 150+ Rules**: Covers security, stability, maintainability, performance, testing, UI/UX, and documentation
+- **🎨 Categorized Reports**: Violations grouped by type (Security, Code Smells, Hygiene, UX, Docs, etc.)
+- **🧠 Anti-Vibecoding Focus**: Based on 300+ common "vibecoding" patterns from real-world production failures
 
 ---
 
@@ -40,7 +41,7 @@ jobs:
         uses: actions/checkout@v4
       
       - name: Run VibeGuard Auditor
-        uses: fab/vibe-check@v1
+        uses: fabriziosalmi/vibe-check@v1
         with:
           threshold: 800
 ```
@@ -67,7 +68,7 @@ jobs:
 
 ```yaml
 - name: Run VibeGuard (Strict Mode)
-  uses: fab/vibe-check@v1
+  uses: fabriziosalmi/vibe-check@v1
   with:
     threshold: 950  # Only allow 50 points of violations
 ```
@@ -77,7 +78,7 @@ jobs:
 ```yaml
 - name: Run VibeGuard
   id: vibeguard
-  uses: fab/vibe-check@v1
+  uses: fabriziosalmi/vibe-check@v1
   with:
     threshold: 700
 
@@ -90,19 +91,21 @@ jobs:
 
 ## 📋 Rule Categories
 
-VibeGuard scans for **100+ patterns** across these categories:
+VibeGuard scans for **150+ patterns** across these categories:
 
 | Category | Examples | Severity |
 |----------|----------|----------|
-| 🔒 **Security** | Hardcoded secrets, SQL injection, `eval()` | Critical (-100 pts) |
-| ⚡ **Stability** | Empty catch blocks, bare excepts, TODOs | High (-50 pts) |
-| 🔧 **Maintainability** | Huge files (>2000 lines), deep nesting | Medium (-30 pts) |
-| 👃 **Code Smells** | `var` keyword, nested ternaries, god objects | Medium (-25 pts) |
+| 🔒 **Security** | Hardcoded secrets, SQL injection, `eval()`, chmod 777 | Critical (-100 pts) |
+| ⚡ **Stability** | Empty catch blocks, bare excepts, TODOs, infinite loops | High (-50 pts) |
+| 🔧 **Maintainability** | Huge files (>2000 lines), deep nesting, god objects | Medium (-30 pts) |
+| 👃 **Code Smells** | `var` keyword, nested ternaries, magic numbers | Medium (-25 pts) |
 | 🧹 **Hygiene** | `console.log`, trailing whitespace, debugger | Low (-5 pts) |
-| 🧪 **Testing** | Skipped tests, focused tests, empty assertions | Medium (-40 pts) |
-| ⚡ **Performance** | Synchronous I/O, nested loops | Medium (-25 pts) |
-| 📦 **Dependencies** | Wildcard imports, absolute paths | Medium (-25 pts) |
-| 🌿 **VCS** | Merge conflict markers, committed `.env` | Critical (-100 pts) |
+| 🧪 **Testing** | Skipped tests, focused tests, fake assertions | Medium (-40 pts) |
+| ⚡ **Performance** | Synchronous I/O, nested loops, blocking event loop | Medium (-25 pts) |
+| 📦 **Dependencies** | Wildcard imports, absolute paths, unused deps | Medium (-25 pts) |
+| 🌿 **VCS** | Merge conflict markers, committed `.env`, IDE settings | Critical (-100 pts) |
+| 🎨 **UI/UX** | Scroll hijacking, low contrast, missing alt text | High (-40 pts) |
+| 📝 **Documentation** | Broken links, condescending language, vague errors | Medium (-15 pts) |
 
 ---
 
@@ -148,6 +151,8 @@ Status: PASSED
 | ❌ No security detection | ✅ **Hardcoded secrets, SQL injection** |
 | ❌ Generic warnings | ✅ **Severity-weighted penalties** |
 | ❌ Hard to track improvement | ✅ **Score trending over time** |
+| ❌ Code-only focus | ✅ **UI/UX + Documentation checks** |
+| ❌ Hype-driven rules | ✅ **Based on 300+ real production failures** |
 
 ---
 
@@ -157,7 +162,7 @@ Status: PASSED
 
 ```yaml
 - name: VibeGuard (Permissive)
-  uses: fab/vibe-check@v1
+  uses: fabriziosalmi/vibe-check@v1
   with:
     threshold: 500  # Allow more violations
 ```
@@ -181,7 +186,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: VibeGuard ${{ matrix.project }}
-        uses: fab/vibe-check@v1
+        uses: fabriziosalmi/vibe-check@v1
         with:
           threshold: 850
 ```
@@ -194,7 +199,7 @@ Want to test VibeGuard locally before pushing?
 
 ```bash
 # Clone the action repo
-git clone https://github.com/fab/vibe-check.git
+git clone https://github.com/fabriziosalmi/vibe-check.git
 cd vibe-check
 
 # Build the Docker image
@@ -226,6 +231,47 @@ python3 vibeguard.py
 | SEC05 | Hardcoded API Key | `api_key = "..."` | -80 |
 | SEC06 | `eval()` Usage | Dangerous execution | -70 |
 | SEC07 | SQL Concatenation | Injection risk | -60 |
+| SEC08 | `chmod 777` permissions | Lazy security | -90 |
+
+</details>
+
+<details>
+<summary><strong>⚡ Stability Rules</strong></summary>
+
+| ID | Rule | Pattern | Weight |
+|----|------|---------|--------|
+| STB01 | Empty Catch Block | `catch (e) {}` | -50 |
+| STB02 | Bare Except | `except: pass` | -50 |
+| STB03 | TODO Comment | `// TODO` | -15 |
+| STB04 | FIXME Comment | `// FIXME` | -20 |
+| STB05 | XXX Comment | `// XXX` | -25 |
+
+</details>
+
+<details>
+<summary><strong>🎨 UI/UX Anti-Patterns (NEW)</strong></summary>
+
+| ID | Rule | Pattern | Weight |
+|----|------|---------|--------|
+| UX01 | Scroll Hijacking | `overflow-y: hidden` | -30 |
+| UX02 | Disable Pinch Zoom | `user-scalable=no` | -40 |
+| UX03 | Autoplay Video | `<video autoplay>` | -35 |
+| UX04 | Low Contrast Text | `color: #ccc` | -25 |
+| UX05 | Placeholder as Label | No `<label>` pair | -20 |
+| UX11 | Missing Alt Text | `<img>` without alt | -20 |
+
+</details>
+
+<details>
+<summary><strong>📝 Documentation Anti-Patterns (NEW)</strong></summary>
+
+| ID | Rule | Pattern | Weight |
+|----|------|---------|--------|
+| DOC03 | Broken Links | 404 URLs | -15 |
+| DOC04 | Condescending Language | "simply", "just" | -8 |
+| DOC05 | Vague Error Descriptions | "returns data" | -10 |
+| DOC07 | Missing README | No README.md | -30 |
+| DOC08 | "Click Here" Links | Bad link text | -10 |
 
 </details>
 
@@ -265,7 +311,7 @@ MIT License - see [LICENSE](LICENSE)
 
 ## 🙏 Credits
 
-Created by [@fab](https://github.com/fab) to combat vibecoding and promote SOTA engineering.
+Created by [@fabriziosalmi](https://github.com/fabriziosalmi) to combat vibecoding and promote SOTA engineering.
 
 Inspired by the eternal struggle between "it works on my machine" and "it works in production."
 
@@ -274,8 +320,8 @@ Inspired by the eternal struggle between "it works on my machine" and "it works 
 ## 🔗 Links
 
 - [GitHub Marketplace](https://github.com/marketplace/actions/vibeguard-auditor)
-- [Report Issues](https://github.com/fab/vibe-check/issues)
-- [View Source](https://github.com/fab/vibe-check)
+- [Report Issues](https://github.com/fabriziosalmi/vibe-check/issues)
+- [View Source](https://github.com/fabriziosalmi/vibe-check)
 
 ---
 

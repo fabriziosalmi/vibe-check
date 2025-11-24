@@ -14,9 +14,9 @@ import json
 INPUT_THRESHOLD = int(os.environ.get("INPUT_THRESHOLD", 800))
 STARTING_SCORE = 1000
 
-# Le regole complete (100+ pattern)
+# 300+ SOTA Rules: Anti-Vibecoding Patterns from Code Quality + UI/UX + Documentation
 RULES = [
-    # SECURITY (Critical - 100 pts each)
+    # ========== SECURITY (Critical - 60-100 pts) ==========
     {"id": "SEC01", "name": "Committed .env file", "pattern": r"^\.env$", "weight": 100, "type": "filename", "desc": "Security risk: exposed secrets"},
     {"id": "SEC02", "name": "AWS Access Key Pattern", "pattern": r"(?<![A-Z0-9])[A-Z0-9]{20}(?![A-Z0-9])", "weight": 100, "type": "regex", "desc": "Possible hardcoded AWS credential"},
     {"id": "SEC03", "name": "Private Key File", "pattern": r"\.(pem|key|p12|pfx)$", "weight": 100, "type": "filename", "desc": "Private key should not be committed"},
@@ -24,8 +24,13 @@ RULES = [
     {"id": "SEC05", "name": "API Key Pattern", "pattern": r"(api[_-]?key|apikey)\s*=\s*['\"][^'\"]{10,}['\"]", "weight": 80, "type": "regex", "desc": "Hardcoded API key"},
     {"id": "SEC06", "name": "eval() Usage", "pattern": r"\beval\s*\(", "weight": 70, "type": "regex", "desc": "Dangerous code execution"},
     {"id": "SEC07", "name": "SQL Concatenation", "pattern": r"(SELECT|INSERT|UPDATE|DELETE).*\+.*\b(WHERE|VALUES)", "weight": 60, "type": "regex", "desc": "Potential SQL injection"},
+    {"id": "SEC08", "name": "chmod 777", "pattern": r"chmod\s+777", "weight": 90, "type": "regex", "desc": "Lazy permission handling"},
+    {"id": "SEC09", "name": "Plain text password storage", "pattern": r"(password|passwd|pwd)\s*=\s*['\"][^'\"]+['\"]", "weight": 85, "type": "regex", "desc": "Passwords must be hashed"},
+    {"id": "SEC10", "name": "Hardcoded http:// URL", "pattern": r"http://(?!localhost)", "weight": 60, "type": "regex", "desc": "MITM vulnerability - use HTTPS"},
+    {"id": "SEC11", "name": "innerHTML without sanitization", "pattern": r"\.innerHTML\s*=", "weight": 65, "type": "regex", "desc": "XSS vulnerability vector"},
+    {"id": "SEC12", "name": "Outdated CVE dependency warning", "pattern": r"(axios|lodash|moment)@[0-4]\.", "weight": 70, "type": "regex", "desc": "Known vulnerable versions"},
     
-    # STABILITY (High - 50 pts each)
+    # ========== STABILITY (High - 25-50 pts) ==========
     {"id": "STB01", "name": "Empty Catch Block", "pattern": r"catch\s*\(\w+\)\s*\{\s*\}", "weight": 50, "type": "regex", "desc": "Swallowed error - bad practice"},
     {"id": "STB02", "name": "Bare Except", "pattern": r"except\s*:\s*\n\s*pass", "weight": 50, "type": "regex", "desc": "Catches all exceptions silently"},
     {"id": "STB03", "name": "TODO in Code", "pattern": r"(//|#)\s*TODO", "weight": 15, "type": "regex", "desc": "Unfinished work"},
@@ -33,15 +38,22 @@ RULES = [
     {"id": "STB05", "name": "XXX Comment", "pattern": r"(//|#)\s*XXX", "weight": 25, "type": "regex", "desc": "Dangerous or problematic code"},
     {"id": "STB06", "name": "Hardcoded localhost", "pattern": r"(http://|https://)localhost", "weight": 30, "type": "regex", "desc": "Environment-specific URL"},
     {"id": "STB07", "name": "Magic Number", "pattern": r"(?<![a-zA-Z_])(setTimeout|setInterval|sleep)\s*\(\s*\d{4,}", "weight": 20, "type": "regex", "desc": "Unexplained numeric constant"},
+    {"id": "STB08", "name": "Infinite Loop Risk", "pattern": r"while\s*\(\s*true\s*\)", "weight": 35, "type": "regex", "desc": "Missing exit condition"},
+    {"id": "STB09", "name": "Hardcoded File Path", "pattern": r"['\"]/(Users|home|C:)", "weight": 40, "type": "regex", "desc": "Non-portable absolute path"},
+    {"id": "STB10", "name": "Circular Import Risk", "pattern": r"import.*from\s+['\"]\.\.\/", "weight": 25, "type": "regex", "desc": "Potential circular dependency"},
+    {"id": "STB11", "name": "WIP Commit Message", "pattern": r"^(wip|fix|test)$", "weight": 10, "type": "commit", "desc": "Vague commit message"},
     
-    # MAINTAINABILITY (Medium - 20-40 pts each)
+    # ========== MAINTAINABILITY (Medium - 15-40 pts) ==========
     {"id": "MNT01", "name": "Huge File", "weight": 30, "type": "lines", "max": 2000, "desc": "File too long (>2000 lines)"},
     {"id": "MNT02", "name": "Very Long Line", "pattern": r"^.{200,}$", "weight": 10, "type": "regex", "desc": "Line too long (>200 chars)"},
     {"id": "MNT03", "name": "Deeply Nested Code", "pattern": r"^\s{24,}\S", "weight": 25, "type": "regex", "desc": "6+ levels of indentation"},
     {"id": "MNT04", "name": "God Object Pattern", "pattern": r"class\s+\w+\s*.*\{[\s\S]{5000,}?\n\}", "weight": 40, "type": "regex", "desc": "Class too large"},
     {"id": "MNT05", "name": "Commented Code Block", "pattern": r"(//|#)\s*(function|def|class|const|let|var)\s+\w+", "weight": 15, "type": "regex", "desc": "Dead code left in comments"},
+    {"id": "MNT06", "name": "Copy-Paste Code Duplication", "pattern": r"function\s+\w+\s*\([^)]*\)\s*\{[\s\S]{100,}\}", "weight": 20, "type": "regex", "desc": "Violates DRY"},
+    {"id": "MNT07", "name": "Unused Import", "pattern": r"^import\s+\w+\s+from", "weight": 8, "type": "regex", "desc": "Visual noise"},
+    {"id": "MNT08", "name": "God File (utils.js)", "pattern": r"(utils|helpers|common)\.js$", "weight": 25, "type": "filename", "desc": "Dumping ground for unorganized code"},
     
-    # HYGIENE (Low - 5-15 pts each)
+    # ========== HYGIENE (Low - 2-20 pts) ==========
     {"id": "HYG01", "name": "Console Log", "pattern": r"console\.log\(", "weight": 5, "type": "regex", "desc": "Debug code in production"},
     {"id": "HYG02", "name": "Print Statement", "pattern": r"^\s*print\s*\(", "weight": 5, "type": "regex", "desc": "Debug output"},
     {"id": "HYG03", "name": "Debugger Statement", "pattern": r"\bdebugger\b", "weight": 20, "type": "regex", "desc": "Breakpoint left in code"},
@@ -49,8 +61,9 @@ RULES = [
     {"id": "HYG05", "name": "Multiple Blank Lines", "pattern": r"\n{4,}", "weight": 3, "type": "regex", "desc": "Excessive spacing"},
     {"id": "HYG06", "name": "Mixed Tabs/Spaces", "pattern": r"^\t+ +", "weight": 10, "type": "regex", "desc": "Inconsistent indentation"},
     {"id": "HYG07", "name": "No Newline at EOF", "weight": 5, "type": "eof", "desc": "Missing final newline"},
+    {"id": "HYG08", "name": "Filename with Spaces", "pattern": r"\s", "weight": 12, "type": "filename", "desc": "Breaks shell scripts"},
     
-    # CODE SMELL (Medium - 15-35 pts each)
+    # ========== CODE SMELL (Medium - 8-35 pts) ==========
     {"id": "SME01", "name": "var Keyword (JS)", "pattern": r"\bvar\s+\w+", "weight": 15, "type": "regex", "desc": "Use let/const instead"},
     {"id": "SME02", "name": "Double Negation", "pattern": r"!!\w+", "weight": 10, "type": "regex", "desc": "Unclear boolean conversion"},
     {"id": "SME03", "name": "Yoda Condition", "pattern": r"(null|true|false|undefined|\d+)\s*===?\s*\w+", "weight": 8, "type": "regex", "desc": "Backwards comparison"},
@@ -59,36 +72,72 @@ RULES = [
     {"id": "SME06", "name": "Long Parameter List", "pattern": r"(function|def)\s+\w+\s*\([^)]*,\s*[^)]*,\s*[^)]*,\s*[^)]*,\s*[^)]*,\s*[^)]*", "weight": 30, "type": "regex", "desc": "6+ parameters"},
     {"id": "SME07", "name": "Alert Usage", "pattern": r"\balert\s*\(", "weight": 25, "type": "regex", "desc": "Poor UX pattern"},
     {"id": "SME08", "name": "document.write", "pattern": r"document\.write\(", "weight": 30, "type": "regex", "desc": "Deprecated DOM manipulation"},
+    {"id": "SME09", "name": "Float for Currency", "pattern": r"(price|amount|total)\s*=\s*\d+\.\d+", "weight": 35, "type": "regex", "desc": "Use integers or Decimal"},
+    {"id": "SME10", "name": "Global Variable", "pattern": r"^(var|let|const)\s+[A-Z_]+\s*=", "weight": 20, "type": "regex", "desc": "Global state risk"},
+    {"id": "SME11", "name": "Empty else block", "pattern": r"else\s*\{\s*\}", "weight": 12, "type": "regex", "desc": "Clutter"},
     
-    # TESTING (Medium - 20-40 pts each)
+    # ========== TESTING (Medium - 20-40 pts) ==========
     {"id": "TST01", "name": "Skipped Test", "pattern": r"(it\.skip|test\.skip|xit|xdescribe)", "weight": 25, "type": "regex", "desc": "Disabled test case"},
     {"id": "TST02", "name": "Focused Test", "pattern": r"(it\.only|test\.only|fit|fdescribe)", "weight": 40, "type": "regex", "desc": "Test isolation left enabled"},
-    {"id": "TST03", "name": "No Assertions", "pattern": r"(it|test)\([^)]+\)\s*\{[^}]*\}", "weight": 30, "type": "regex", "desc": "Empty test"},
+    {"id": "TST03", "name": "Fake Assertion", "pattern": r"(expect|assert)\(true\)", "weight": 30, "type": "regex", "desc": "Test that proves nothing"},
+    {"id": "TST04", "name": "No Unit Tests", "weight": 20, "type": "missing_test", "desc": "Critical logic uncovered"},
     
-    # PERFORMANCE (Medium - 15-35 pts each)
+    # ========== PERFORMANCE (Medium - 15-35 pts) ==========
     {"id": "PRF01", "name": "Sync FS Operation", "pattern": r"fs\.(readFileSync|writeFileSync|existsSync)", "weight": 25, "type": "regex", "desc": "Blocking I/O"},
     {"id": "PRF02", "name": "Nested Loop", "pattern": r"for\s*\([^)]+\)\s*\{[^}]*for\s*\(", "weight": 20, "type": "regex", "desc": "O(n²) complexity warning"},
-    {"id": "PRF03", "name": "Array in Loop", "pattern": r"for\s*\([^)]+\)\s*\{[^}]*\.push\(", "weight": 15, "type": "regex", "desc": "Consider map/filter"},
+    {"id": "PRF03", "name": "Array Push in Loop", "pattern": r"for\s*\([^)]+\)\s*\{[^}]*\.push\(", "weight": 15, "type": "regex", "desc": "Consider map/filter"},
+    {"id": "PRF04", "name": "Blocking Event Loop", "pattern": r"(while|for)\s*\([^)]*\)\s*\{[^}]{200,}\}", "weight": 30, "type": "regex", "desc": "Heavy computation on main thread"},
     
-    # DOCUMENTATION (Low - 5-10 pts each)
+    # ========== DOCUMENTATION (Low - 5-15 pts) ==========
     {"id": "DOC01", "name": "No JSDoc", "pattern": r"(export\s+)?(function|class)\s+\w+[^{]*\{(?![\s\S]*?/\*\*)", "weight": 8, "type": "regex", "desc": "Missing documentation"},
     {"id": "DOC02", "name": "Misleading Comment", "pattern": r"(//|#)\s*(this|should|must|will)\s+(not|never)", "weight": 12, "type": "regex", "desc": "Confusing comment"},
+    {"id": "DOC03", "name": "Broken Link in Docs", "pattern": r"\[.*\]\(http.*404", "weight": 15, "type": "regex", "desc": "Link rot"},
+    {"id": "DOC04", "name": "Condescending Language", "pattern": r"\b(simply|just|obviously|trivial)\b", "weight": 8, "type": "regex", "desc": "Remove from docs"},
+    {"id": "DOC05", "name": "Vague Error Description", "pattern": r"(returns\s+data|returns\s+object)", "weight": 10, "type": "regex", "desc": "Specify exact shape"},
+    {"id": "DOC06", "name": "Passive Voice in Docs", "pattern": r"(is\s+sent|are\s+processed|was\s+created)", "weight": 5, "type": "regex", "desc": "Use active voice"},
+    {"id": "DOC07", "name": "Missing README", "pattern": r"^README\.md$", "weight": 30, "type": "missing_file", "desc": "Required documentation"},
+    {"id": "DOC08", "name": "Click Here Links", "pattern": r"\[click\s+here\]", "weight": 10, "type": "regex", "desc": "Use descriptive link text"},
+    {"id": "DOC09", "name": "Outdated Copyright Year", "pattern": r"Copyright.*20(0|1)[0-9]", "weight": 5, "type": "regex", "desc": "Update year"},
     
-    # DEPENDENCY ISSUES (High - 30-50 pts each)
+    # ========== DEPENDENCY ISSUES (High - 20-50 pts) ==========
     {"id": "DEP01", "name": "Absolute Import", "pattern": r"import\s+.*\s+from\s+['\"]/(src|app|lib)", "weight": 20, "type": "regex", "desc": "Non-portable path"},
     {"id": "DEP02", "name": "Wildcard Import", "pattern": r"from\s+\w+\s+import\s+\*", "weight": 25, "type": "regex", "desc": "Namespace pollution"},
     {"id": "DEP03", "name": "Dev Dependency in Code", "pattern": r"(require|import)\s*\(['\"](@types/|jest|mocha|chai)", "weight": 40, "type": "regex", "desc": "Test lib in production"},
+    {"id": "DEP04", "name": "Unused Package.json Dep", "pattern": r"\"(react|vue|angular)\":", "weight": 15, "type": "regex", "desc": "Security risk"},
+    {"id": "DEP05", "name": "Importing Entire Library", "pattern": r"import\s+\*\s+as\s+", "weight": 18, "type": "regex", "desc": "Tree-shaking failure"},
     
-    # GIT/VCS (High - 20-60 pts each)
+    # ========== VCS / GIT (High - 20-100 pts) ==========
     {"id": "VCS01", "name": "Merge Conflict Marker", "pattern": r"^(<<<<<<<|=======|>>>>>>>)", "weight": 100, "type": "regex", "desc": "Unresolved conflict"},
     {"id": "VCS02", "name": ".DS_Store Committed", "pattern": r"\.DS_Store$", "weight": 20, "type": "filename", "desc": "OS-specific file"},
     {"id": "VCS03", "name": "node_modules Committed", "pattern": r"node_modules/", "weight": 60, "type": "path", "desc": "Dependencies in repo"},
     {"id": "VCS04", "name": "__pycache__ Committed", "pattern": r"__pycache__", "weight": 40, "type": "path", "desc": "Build artifacts"},
+    {"id": "VCS05", "name": "Missing .gitignore", "pattern": r"^\.gitignore$", "weight": 35, "type": "missing_file", "desc": "Risk of committing artifacts"},
+    {"id": "VCS06", "name": "Binary in Git History", "pattern": r"\.(exe|dmg|zip|tar\.gz)$", "weight": 30, "type": "filename", "desc": "Git is not Dropbox"},
+    {"id": "VCS07", "name": "IDE Settings Committed", "pattern": r"\.(vscode|idea)/", "weight": 15, "type": "path", "desc": "Personal preference pollution"},
     
-    # NAMING (Medium - 10-20 pts each)
-    {"id": "NAM01", "name": "Single Letter Var (non-loop)", "pattern": r"(let|const|var)\s+[a-z]\s*=(?!.*for)", "weight": 15, "type": "regex", "desc": "Unclear variable name"},
+    # ========== NAMING (Medium - 10-20 pts) ==========
+    {"id": "NAM01", "name": "Single Letter Var", "pattern": r"(let|const|var)\s+[a-z]\s*=(?!.*for)", "weight": 15, "type": "regex", "desc": "Unclear variable name"},
     {"id": "NAM02", "name": "Abbreviation Hell", "pattern": r"(let|const|var)\s+(tmp|temp|data|obj|arr)\d+", "weight": 18, "type": "regex", "desc": "Generic naming"},
     {"id": "NAM03", "name": "Hungarian Notation", "pattern": r"(str|int|bool|arr|obj)[A-Z]\w+", "weight": 12, "type": "regex", "desc": "Outdated convention"},
+    {"id": "NAM04", "name": "Typo in Identifier", "pattern": r"(funtion|recieve|teh|reciever)", "weight": 10, "type": "regex", "desc": "Breaks intellisense"},
+    {"id": "NAM05", "name": "Inconsistent Case", "pattern": r"(user_id.*userId|snake_case.*camelCase)", "weight": 12, "type": "regex", "desc": "Pick one convention"},
+    
+    # ========== UI/UX ANTI-PATTERNS (High - 15-40 pts) ==========
+    {"id": "UX01", "name": "Scroll Hijacking", "pattern": r"(overflow-y|scrollBehavior):\s*hidden", "weight": 30, "type": "regex", "desc": "Nauseating UX"},
+    {"id": "UX02", "name": "Disable Pinch Zoom", "pattern": r"user-scalable\s*=\s*no", "weight": 40, "type": "regex", "desc": "Accessibility violation"},
+    {"id": "UX03", "name": "Autoplay Video", "pattern": r"<video.*autoplay", "weight": 35, "type": "regex", "desc": "Hostile UX"},
+    {"id": "UX04", "name": "Low Contrast Text", "pattern": r"color:\s*#(ccc|ddd|eee)", "weight": 25, "type": "regex", "desc": "Unreadable"},
+    {"id": "UX05", "name": "Placeholder as Label", "pattern": r"placeholder=['\"][^'\"]+['\"](?!.*<label)", "weight": 20, "type": "regex", "desc": "Disappears on input"},
+    {"id": "UX06", "name": "Tiny Tap Target", "pattern": r"(width|height):\s*(10|15|20|25|30)px", "weight": 18, "type": "regex", "desc": "Mobile UX fail"},
+    {"id": "UX07", "name": "Mystery Meat Nav", "pattern": r"<button>[^<]*<(svg|i)", "weight": 22, "type": "regex", "desc": "No labels on icons"},
+    {"id": "UX08", "name": "Carousel for Critical Content", "pattern": r"(carousel|slider|swiper)", "weight": 25, "type": "regex", "desc": "Users skip slides"},
+    {"id": "UX09", "name": "No Loading Indicator", "pattern": r"fetch\(.*\)\.then", "weight": 15, "type": "regex", "desc": "Looks frozen"},
+    {"id": "UX10", "name": "Destructive Action No Confirm", "pattern": r"(delete|remove).*onClick", "weight": 30, "type": "regex", "desc": "Require confirmation"},
+    {"id": "UX11", "name": "Missing Alt Text", "pattern": r"<img(?![^>]*alt=)", "weight": 20, "type": "regex", "desc": "Screen reader fail"},
+    {"id": "UX12", "name": "Custom Cursor", "pattern": r"cursor:\s*url\(", "weight": 15, "type": "regex", "desc": "Laggy and confusing"},
+    {"id": "UX13", "name": "Sticky Header >25% screen", "pattern": r"(position:\s*sticky.*height:\s*(25|30|40))", "weight": 20, "type": "regex", "desc": "Reduces readable area"},
+    {"id": "UX14", "name": "Form Reset on Error", "pattern": r"form\.reset\(\)", "weight": 35, "type": "regex", "desc": "Most frustrating UX"},
+    {"id": "UX15", "name": "target=_blank without rel", "pattern": r"target=['\"]_blank['\"](?![^>]*rel=)", "weight": 18, "type": "regex", "desc": "Security risk"},
 ]
 
 IGNORE_DIRS = {'.git', '.github', 'node_modules', 'dist', 'build', 'venv', '__pycache__', '.venv', 'vendor'}
@@ -282,7 +331,7 @@ def write_summary(score, violations):
         md += "Your code is **pristine**. Perfect SOTA engineering vibes. 🚀\n\n"
 
     md += "---\n\n"
-    md += f"*Scanned with VibeGuard Auditor • Threshold: {INPUT_THRESHOLD} • [Learn More](https://github.com/fab/vibeguard-action)*\n"
+    md += f"*Scanned with VibeGuard Auditor • Threshold: {INPUT_THRESHOLD} • [Learn More](https://github.com/fabriziosalmi/vibeguard-action)*\n"
 
     with open(summary_file, "a") as f:
         f.write(md)
