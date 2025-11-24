@@ -1,0 +1,20 @@
+name: 'VibeGuard Auditor'
+description: 'SOTA Python-based linter that ranks your code quality based on Vibecoding vs Engineering patterns. Detects security issues, code smells, and technical debt.'
+author: 'fab'
+branding:
+  icon: 'shield'
+  color: 'purple'
+
+inputs:
+  threshold:
+    description: 'Minimum score required to pass the pipeline (0-1000)'
+    required: false
+    default: '800'
+
+outputs:
+  score:
+    description: 'The final calculated score after all deductions'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'

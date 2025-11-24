@@ -1,0 +1,3 @@
+# Python dependencies for VibeGuard Auditor
+# Currently no external dependencies required - uses only stdlib
+# Add future dependencies here (e.g., PyYAML, regex, etc.)
