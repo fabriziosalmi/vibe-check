@@ -237,6 +237,13 @@ def audit_git_history():
         return git_deductions, git_violations
     
     try:
+        # Fix GitHub Actions dubious ownership issue
+        subprocess.run(
+            ['git', 'config', '--global', '--add', 'safe.directory', '*'],
+            capture_output=True,
+            timeout=5
+        )
+        
         # Get last 50 commits: hash|author|date|message
         result = subprocess.run(
             ['git', 'log', '-n', '50', '--pretty=format:%H|%an|%cd|%s', '--date=format:%a %H:%M'],
