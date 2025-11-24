@@ -242,11 +242,19 @@ def audit_git_history():
             ['git', 'log', '-n', '50', '--pretty=format:%H|%an|%cd|%s', '--date=format:%a %H:%M'],
             capture_output=True,
             text=True,
-            timeout=10
+            timeout=10,
+            cwd='.'
         )
         
         if result.returncode != 0:
-            print("::warning::Git history audit skipped (git log failed)")
+            stderr = result.stderr.strip()
+            if 'does not have any commits' in stderr or 'your current branch' in stderr:
+                print("::warning::Git history audit skipped (no commits in repository)")
+            elif 'bad default revision' in stderr or 'unknown revision' in stderr:
+                print("::warning::Git history audit skipped (shallow clone detected)")
+                print("::warning::To enable git audit, use: actions/checkout@v4 with fetch-depth: 50")
+            else:
+                print(f"::warning::Git history audit skipped (git log failed: {stderr[:100]})")
             return git_deductions, git_violations
         
         commits = result.stdout.strip().split('\n')
