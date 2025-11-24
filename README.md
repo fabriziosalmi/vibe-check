@@ -1,148 +1,342 @@
-# 🛡️ Vibe Check: The Anti-Slop CI/CD Gatekeeper
+# VibeGuard Auditor ⚡
 
-> **"Your code quality is a vibe. And the vibe is off."**
-> 
-> Vibe Check is a ruthless, Python-based CI/CD auditor that ranks your repository quality on a scale of 0 to 1000.
+**v1.4.0** - SOTA Code Quality Scanner with Modular Architecture
 
-[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-VibeGuard-blue?logo=github)](https://github.com/marketplace/actions/vibeguard-auditor)
+[![GitHub Actions](https://img.shields.io/badge/GitHub-Actions-blue)](https://github.com/features/actions)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+
+> **Anti-slop CI/CD gatekeeper** detecting security vulnerabilities, code smells, AI-generated slop, and git anti-patterns with intelligent 0-1000 scoring.
 
 ---
 
-## 🧐 What is this?
+## 🚀 Features
 
-**Vibe Check** isn't just a linter. It's a gamified reputation system for your codebase. It scans your repository for:
+### Core Capabilities
+- ✅ **300+ Rules** across security, stability, maintainability, performance, UX, and more
+- ✅ **AST-based Analysis** for Python - no more regex false positives
+- ✅ **Git History Audit** - analyzes commit patterns and quality
+- ✅ **Inline Ignore Comments** - `# vibeguard:ignore` to suppress false positives
+- ✅ **Modular Architecture** - clean separation: scanner, rules, reporter
+- ✅ **Structured Logging** - proper logging with verbosity levels
+- ✅ **GitHub Actions Native** - annotations, job summaries, auto-fail
+- ✅ **Configurable Rules** - externalized YAML configuration
+- ✅ **CLI with argparse** - professional argument parsing
 
-1.  **Security Suicide** (committed `.env` files, AWS keys, `777` permissions, hardcoded passwords).
-2.  **Stability Nightmares** (empty `catch` blocks, infinite loops, God objects).
-3.  **AI Slop** (Literal "As an AI language model" copy-pasted from ChatGPT—**-500 points instantly**).
-4.  **Vibecoding Artifacts** (`console.log` leftovers, `TODO` graveyards, "trust me bro" comments).
-5.  **React Anti-Patterns** (`useEffect` without deps, `index` as key, inline functions in JSX).
-6.  **UI/UX Disasters** (Scroll hijacking, disabled zoom, missing alt text, autoplay videos).
-7.  **Git Commit Hygiene** (Lazy "wip" commits, Friday deploys, 3 AM cowboy coding, revert wars).
-8.  **Engineering Excellence** (It penalizes bad patterns and rewards SOTA architecture).
+### Rule Categories
+- 🔒 **Security** - Hardcoded credentials, SQL injection, eval() usage
+- ⚡ **Stability** - Empty catch blocks, TODO/FIXME comments, magic numbers
+- 🔧 **Maintainability** - God objects, huge files, deep nesting
+- 🧹 **Code Hygiene** - Console.log, debugger statements, trailing whitespace
+- 👃 **Code Smells** - var keyword, nested ternaries, long parameter lists
+- 🧪 **Testing** - Skipped tests, focused tests, fake assertions
+- ⚡ **Performance** - Sync I/O, nested loops, blocking operations
+- 📝 **Documentation** - Missing docs, passive voice, "click here" links
+- 🎨 **UI/UX** - Scroll hijacking, tiny tap targets, missing alt text
+- 🤖 **AI Slop Detection** - Copy-pasted ChatGPT responses, Lorem Ipsum
+- 🌿 **Git Hygiene** - Lazy commits, merge conflicts, unprofessional messages
 
-If your score drops below the threshold (Default: **800**), **the build fails**. No mercy.
+---
 
-**🔥 Brutal Mode Available**: Double all penalties and fail-fast on critical security violations.
+## 📦 Installation
 
-### 🆕 Git History Audit
+### As a GitHub Action
 
-Vibe Check doesn't just judge your code—it judges **you**. The git history audit analyzes your last 50 commits for:
-
-- **Lazy Messages**: "wip", "fix", "test", "asdasd" (-15 pts each)
-- **Revert Wars**: Reverting a revert indicates chaos (-30 pts)
-- **Unprofessional Language**: "oops", "lol", "yolo", "hope this works" (-10 pts)
-- **Monster Commits**: Single commits touching >50 files (-40 pts)
-- **Friday Deploys**: Commits after 4 PM on Friday (-50 pts—read-only Friday rule)
-- **3 AM Commits**: Coding during ungodly hours (00:00-05:59) (-20 pts)
-- **Missing Ticket IDs**: No `PROJ-123` reference in commit message (-12 pts)
-
-*If you write beautiful code but commit "fix" 10 times at 3 AM on Friday, your vibe score still tanks.*
-
-## 🚀 Usage
-
-### Basic Usage
-
-Add this to your `.github/workflows/main.yml`:
+Add to `.github/workflows/vibe-check.yml`:
 
 ```yaml
-name: Quality Gate
+name: VibeGuard Code Quality
+
 on: [push, pull_request]
 
 jobs:
   vibe-check:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 50  # Required for git history audit
-
+      
       - name: Run VibeGuard Auditor
-        uses: fabriziosalmi/vibe-check@v1.2.0
+        uses: fabriziosalmi/vibe-check@main
         with:
-          threshold: 850  # Optional: Default is 800
+          threshold: 800
+          brutal_mode: false
 ```
 
-> **💡 Note:** Git history audit requires `fetch-depth: 50` in checkout step to analyze commit patterns. Without it, only code analysis runs.
+### Local Installation
 
-### 🔥 Brutal Mode (Recommended for Main Branch)
+```bash
+# Clone the repository
+git clone https://github.com/fabriziosalmi/vibe-check.git
+cd vibe-check
 
-Enable **double penalties** and **fail-fast** on critical security issues:
+# Install dependencies
+pip install -r requirements.txt
 
-```yaml
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 50  # Enable git history audit
-          
-      - name: Run VibeGuard (Brutal Mode)
-        uses: fabriziosalmi/vibe-check@v1.2.0
-        with:
-          threshold: 900
-          brutal_mode: true  # 💀 No mercy
+# Run the scanner
+python vibeguard_new.py
 ```
 
-In Brutal Mode:
-- All penalties are **doubled** (e.g., `eval()` costs -140 instead of -70)
-- Pipeline **terminates immediately** on critical violations (hardcoded secrets, AI slop)
-- Perfect for protecting `main` branch from rancid vibes
+---
 
-### ⚙️ Custom Configuration
+## 🎯 Usage
 
-Create a `.vibeguardrc` file in your repository root:
+### Basic Usage
+
+```bash
+# Scan current directory with default threshold (800)
+python vibeguard_new.py
+
+# Set custom threshold
+python vibeguard_new.py --threshold 900
+
+# Enable brutal mode (double penalties, fail-fast on critical violations)
+python vibeguard_new.py --brutal-mode
+
+# Verbose output
+python vibeguard_new.py --verbose
+
+# Quiet mode (errors only)
+python vibeguard_new.py --quiet
+
+# Skip git history audit
+python vibeguard_new.py --no-git
+
+# Scan specific directory
+python vibeguard_new.py --directory ./src
+```
+
+### Configuration File
+
+Create `.vibeguardrc` in your project root:
 
 ```json
 {
-  "ignore": ["NAM03", "SME03"],
-  "exclude_files": ["legacy/*", "vendor/*", "*.min.js"]
+  "ignore": ["HYG01", "HYG02", "DOC04"],
+  "exclude_files": [
+    "*.min.js",
+    "dist/*",
+    "node_modules/*",
+    "vendor/*"
+  ]
 }
 ```
 
-See [`.vibeguardrc.example`](./.vibeguardrc.example) for full options.
+### Inline Ignores
+
+Suppress specific violations with comments:
+
+```python
+# This line will be ignored
+password = "temporary_dev_password"  # vibeguard:ignore
+
+# vibeguard:ignore
+# This whole block is ignored
+api_key = "dev_key_12345"
+```
+
+```javascript
+// This line will be ignored
+console.log("Debug info");  // vibeguard:ignore
+
+// vibeguard:ignore
+debugger;
+```
 
 ---
 
-## 📊 The Report Card
+## 📁 Project Structure
 
-Vibe Check doesn't just crash your pipeline; it tells you why. It generates a **Job Summary** directly in your GitHub Actions run:
+```
+vibe-check/
+├── src/                      # Source modules (NEW!)
+│   ├── __init__.py          # Package initialization
+│   ├── rules.py             # Rules management
+│   ├── scanner.py           # File scanning and AST analysis
+│   ├── reporter.py          # Output formatting and GitHub integration
+│   └── logger.py            # Structured logging
+├── config/                   # Configuration (NEW!)
+│   └── rules.yaml           # Externalized rules definition
+├── tests/                    # Test suite (NEW!)
+│   ├── test_rules.py        # Unit tests for rules module
+│   ├── test_scanner.py      # Unit tests for scanner module
+│   ├── test_violations.py   # Sample file with deliberate violations
+│   ├── test_violations.js   # JS violations for testing
+│   └── test_violations.md   # Documentation violations
+├── vibeguard_new.py          # Main entry point (REFACTORED)
+├── vibeguard.py              # Legacy entry point (deprecated)
+├── requirements.txt          # Python dependencies
+├── action.yml                # GitHub Action definition
+├── Dockerfile                # Container definition
+└── README.md                 # This file
 
-### Sample Output
+```
 
-| Category | File | Violation | Penalty |
-| :---: | :--- | :--- | ---: |
-| 🤖 **AI Slop** | `src/ai-code.js` | **"As an AI language model..."** | 🔴 **-500 pts** |
-| 🔒 **Security** | `src/config.js` | **Committed .env file** | 🔴 **-100 pts** |
-| ⚡ **Stability** | `src/utils.js` | **Empty Catch Block** | 🟠 **-50 pts** |
-| 🧹 **Hygiene** | `src/app.ts` | **Console.log leftover** | 🟡 **-5 pts** |
-|  | **FINAL SCORE** | **345 / 1000** | ❌ **VIBE: RANCID** |
+### Architecture
+
+**Before (God Object)**:
+- Single 730-line file with everything mixed together
+- Hardcoded rules list
+- Manual `os.environ` parsing
+- print() everywhere
+- Regex-only parsing (false positives)
+
+**After (Modular)**:
+- **src/rules.py**: Rule loading, filtering, validation
+- **src/scanner.py**: File scanning, AST parsing, violation detection
+- **src/reporter.py**: GitHub annotations, job summaries, console output
+- **src/logger.py**: Structured logging with verbosity levels
+- **config/rules.yaml**: Externalized rule definitions
+- **vibeguard_new.py**: Clean CLI with argparse
 
 ---
 
-## ⚖️ The Rules
+## 🔧 Development
 
-Vibe Check applies **170+ checks** based on modern FAANG-level engineering standards versus "Vibe-based" coding.
+### Running Tests
 
-### Rule Categories
+```bash
+# Run unit tests
+python tests/test_rules.py
+python tests/test_scanner.py
 
-*   **🤖 AI SLOP (-100 to -500 pts):** Copy-pasted ChatGPT responses, hallucinated comments, Lorem Ipsum
-*   **🔒 CRITICAL SECURITY (-60 to -100 pts):** Hardcoded secrets, SQL Injection, `eval()`, chmod 777
-*   **⚡ HIGH STABILITY (-25 to -50 pts):** Swallow exceptions, Hardcoded paths, Infinite loops
-*   **⚛️ REACT ANTI-PATTERNS (-25 to -60 pts):** useEffect without deps, index as key, setState in render
-*   **🌿 GIT HYGIENE (-10 to -50 pts):** Lazy commits, Friday deploys, 3 AM coding, revert wars
-*   **🎨 UI/UX DISASTERS (-15 to -40 pts):** Scroll hijacking, disabled zoom, missing alt text
-*   **🔧 MAINTAINABILITY (-15 to -40 pts):** Huge files (>2000 lines), God objects, deep nesting
-*   **👃 CODE SMELLS (-8 to -35 pts):** `var` usage, Magic numbers, Float for currency
-*   **🧹 HYGIENE (-2 to -20 pts):** Debug statements, trailing whitespace, filename with spaces
+# Scan test violation files (should find many violations)
+python vibeguard_new.py --directory tests --threshold 0
 
-## 🛠️ Configuration
+# With pytest (optional)
+pip install pytest pytest-cov
+pytest tests/ -v
+pytest tests/ --cov=src --cov-report=html
+```
 
-Currently, Vibe Check runs with an opinionated "Strict" preset. Custom configuration via `.vibeguardrc` is coming in v1.1.
+### Adding New Rules
+
+Edit `config/rules.yaml`:
+
+```yaml
+security:
+  - id: SEC13
+    name: Hardcoded JWT Secret
+    pattern: "jwt\\.sign\\([^,]+,\\s*['\"][^'\"]{10,}['\"]"
+    weight: 90
+    type: regex
+    desc: JWT secret should be in environment variable
+    critical: true
+```
+
+### Creating Custom Rules Files
+
+```bash
+# Use custom rules file
+python vibeguard_new.py --rules my_custom_rules.yaml
+```
+
+---
+
+## 📊 Scoring System
+
+- **Starting Score**: 1000
+- **Deductions**: Each violation deducts points based on severity
+- **Brutal Mode**: Doubles all penalties
+- **Threshold**: Configurable pass/fail threshold (default: 800)
+
+### Severity Levels
+- **Critical (100 pts)**: Security vulnerabilities, merge conflicts
+- **High (50-90 pts)**: Major code smells, test issues
+- **Medium (20-49 pts)**: Maintainability problems, performance issues
+- **Low (2-19 pts)**: Code hygiene, minor documentation issues
+
+---
+
+## 🎨 GitHub Actions Integration
+
+### Annotations
+
+VibeGuard creates GitHub code annotations:
+
+```
+::error file=src/auth.py,line=42::[SEC04] Hardcoded Password (-80 pts)
+::warning file=src/utils.js,line=15::[HYG01] Console Log (-5 pts)
+```
+
+### Job Summary
+
+Generates a detailed markdown summary in the Actions UI:
+
+- ✅/❌ Pass/Fail status
+- 📊 Score visualization with progress bar
+- 📉 Violations grouped by category
+- 📁 File-by-file breakdown
+
+### Outputs
+
+```yaml
+- name: Run VibeGuard
+  id: vibe-check
+  uses: fabriziosalmi/vibe-check@main
+  with:
+    threshold: 850
+
+- name: Use Score
+  run: echo "Score was ${{ steps.vibe-check.outputs.score }}"
+```
+
+---
+
+## 🚨 Brutal Mode
+
+Enable with `--brutal-mode` or `brutal_mode: true` in GitHub Actions:
+
+- **2x Penalties**: All violations count double
+- **Fail-Fast**: Immediately exits on critical violations
+- **Stricter Enforcement**: Perfect for production branches
+
+```yaml
+- uses: fabriziosalmi/vibe-check@main
+  with:
+    threshold: 900
+    brutal_mode: true  # Production-ready code only!
+```
+
+---
 
 ## 🤝 Contributing
 
-Found a new "Vibecoding" pattern I missed? Open a PR. I accept rules that enforce rigor, sanity, and professional engineering.
+Contributions welcome! Please:
 
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-rule`
+3. Add your rule to `config/rules.yaml`
+4. Add tests in `tests/`
+5. Run tests: `python tests/test_rules.py`
+6. Commit with atomic messages (not "fix" or "wip"!)
+7. Submit a pull request
 
+---
+
+## 📜 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- Inspired by real-world code review pain
+- Built to fight vibecoding and AI slop
+- Designed for teams that value code quality
+
+---
+
+## 📬 Support
+
+- 🐛 **Issues**: [GitHub Issues](https://github.com/fabriziosalmi/vibe-check/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/fabriziosalmi/vibe-check/discussions)
+- 📧 **Email**: Open an issue instead!
+
+---
+
+**Practice what you preach.** ✨
+
+Built with ❤️ and refactored to follow its own rules.

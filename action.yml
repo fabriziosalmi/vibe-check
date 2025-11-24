@@ -1,5 +1,5 @@
 name: 'VibeGuard Auditor'
-description: 'Anti-slop CI/CD gatekeeper detecting security, code smells, AI slop, and git anti-patterns with 0-1000 scoring.'
+description: 'Anti-slop CI/CD gatekeeper v1.4.0 - Modular architecture with AST parsing, inline ignores, and 115 configurable rules.'
 author: 'fabriziosalmi'
 branding:
   icon: 'shield'

@@ -1,0 +1,929 @@
+# VibeGuard Rules Configuration
+# Each rule detects anti-patterns and assigns penalty weights
+# Rules are organized by category for maintainability
+
+security:
+  - id: SEC01
+    name: Committed .env file
+    pattern: ^\.env$
+    weight: 100
+    type: filename
+    desc: Security risk - exposed secrets
+    critical: true
+
+  - id: SEC02
+    name: AWS Access Key Pattern
+    pattern: (?<![A-Z0-9])[A-Z0-9]{20}(?![A-Z0-9])
+    weight: 100
+    type: regex
+    desc: Possible hardcoded AWS credential
+    critical: false
+
+  - id: SEC03
+    name: Private Key File
+    pattern: \.(pem|key|p12|pfx)$
+    weight: 100
+    type: filename
+    desc: Private key should not be committed
+    critical: true
+
+  - id: SEC04
+    name: Hardcoded Password
+    pattern: password\s*=\s*['"][^'"]{3,}['"]
+    weight: 80
+    type: regex
+    desc: Hardcoded credential
+    critical: false
+
+  - id: SEC05
+    name: API Key Pattern
+    pattern: (api[_-]?key|apikey)\s*=\s*['"][^'"]{10,}['"]
+    weight: 80
+    type: regex
+    desc: Hardcoded API key
+    critical: false
+
+  - id: SEC06
+    name: eval() Usage
+    pattern: \beval\s*\(
+    weight: 70
+    type: regex
+    desc: Dangerous code execution
+    critical: false
+
+  - id: SEC07
+    name: SQL Concatenation
+    pattern: (SELECT|INSERT|UPDATE|DELETE).*\+.*\b(WHERE|VALUES)
+    weight: 60
+    type: regex
+    desc: Potential SQL injection
+    critical: false
+
+  - id: SEC08
+    name: chmod 777
+    pattern: chmod\s+777
+    weight: 90
+    type: regex
+    desc: Lazy permission handling
+    critical: false
+
+  - id: SEC09
+    name: Plain text password storage
+    pattern: (password|passwd|pwd)\s*=\s*['"][^'"]+['"]
+    weight: 85
+    type: regex
+    desc: Passwords must be hashed
+    critical: false
+
+  - id: SEC10
+    name: Hardcoded http:// URL
+    pattern: http://(?!localhost)
+    weight: 60
+    type: regex
+    desc: MITM vulnerability - use HTTPS
+    critical: false
+
+  - id: SEC11
+    name: innerHTML without sanitization
+    pattern: \.innerHTML\s*=
+    weight: 65
+    type: regex
+    desc: XSS vulnerability vector
+    critical: false
+
+  - id: SEC12
+    name: Outdated CVE dependency warning
+    pattern: (axios|lodash|moment)@[0-4]\.
+    weight: 70
+    type: regex
+    desc: Known vulnerable versions
+    critical: false
+
+stability:
+  - id: STB01
+    name: Empty Catch Block
+    pattern: catch\s*\(\w+\)\s*\{\s*\}
+    weight: 50
+    type: regex
+    desc: Swallowed error - bad practice
+    critical: false
+
+  - id: STB02
+    name: Bare Except
+    pattern: except\s*:\s*\n\s*pass
+    weight: 50
+    type: regex
+    desc: Catches all exceptions silently
+    critical: false
+
+  - id: STB03
+    name: TODO in Code
+    pattern: (//|#)\s*TODO
+    weight: 15
+    type: regex
+    desc: Unfinished work
+    critical: false
+
+  - id: STB04
+    name: FIXME in Code
+    pattern: (//|#)\s*FIXME
+    weight: 20
+    type: regex
+    desc: Known bug not addressed
+    critical: false
+
+  - id: STB05
+    name: XXX Comment
+    pattern: (//|#)\s*XXX
+    weight: 25
+    type: regex
+    desc: Dangerous or problematic code
+    critical: false
+
+  - id: STB06
+    name: Hardcoded localhost
+    pattern: (http://|https://)localhost
+    weight: 30
+    type: regex
+    desc: Environment-specific URL
+    critical: false
+
+  - id: STB07
+    name: Magic Number
+    pattern: (?<![a-zA-Z_])(setTimeout|setInterval|sleep)\s*\(\s*\d{4,}
+    weight: 20
+    type: regex
+    desc: Unexplained numeric constant
+    critical: false
+
+  - id: STB08
+    name: Infinite Loop Risk
+    pattern: while\s*\(\s*true\s*\)
+    weight: 35
+    type: regex
+    desc: Missing exit condition
+    critical: false
+
+  - id: STB09
+    name: Hardcoded File Path
+    pattern: "['\\\"](/(Users|home|C:)"
+    weight: 40
+    type: regex
+    desc: Non-portable absolute path
+    critical: false
+
+  - id: STB10
+    name: Circular Import Risk
+    pattern: "import.*from\\s+['\\\"]\\.\\.\\/"
+    weight: 25
+    type: regex
+    desc: Potential circular dependency
+    critical: false
+
+  - id: STB11
+    name: WIP Commit Message
+    pattern: ^(wip|fix|test)$
+    weight: 10
+    type: commit
+    desc: Vague commit message
+    critical: false
+
+maintainability:
+  - id: MNT01
+    name: Huge File
+    weight: 30
+    type: lines
+    max: 2000
+    desc: File too long (>2000 lines)
+    critical: false
+
+  - id: MNT02
+    name: Very Long Line
+    pattern: ^.{200,}$
+    weight: 10
+    type: regex
+    desc: Line too long (>200 chars)
+    critical: false
+
+  - id: MNT03
+    name: Deeply Nested Code
+    pattern: ^\s{24,}\S
+    weight: 25
+    type: regex
+    desc: 6+ levels of indentation
+    critical: false
+
+  - id: MNT04
+    name: God Object Pattern
+    pattern: class\s+\w+\s*.*\{[\s\S]{5000,}?\n\}
+    weight: 40
+    type: regex
+    desc: Class too large
+    critical: false
+
+  - id: MNT05
+    name: Commented Code Block
+    pattern: (//|#)\s*(function|def|class|const|let|var)\s+\w+
+    weight: 15
+    type: regex
+    desc: Dead code left in comments
+    critical: false
+
+  - id: MNT06
+    name: Copy-Paste Code Duplication
+    pattern: function\s+\w+\s*\([^)]*\)\s*\{[\s\S]{100,}\}
+    weight: 20
+    type: regex
+    desc: Violates DRY
+    critical: false
+
+  - id: MNT07
+    name: Unused Import
+    pattern: ^import\s+\w+\s+from
+    weight: 8
+    type: regex
+    desc: Visual noise
+    critical: false
+
+  - id: MNT08
+    name: God File (utils.js)
+    pattern: (utils|helpers|common)\.js$
+    weight: 25
+    type: filename
+    desc: Dumping ground for unorganized code
+    critical: false
+
+hygiene:
+  - id: HYG01
+    name: Console Log
+    pattern: console\.log\(
+    weight: 5
+    type: regex
+    desc: Debug code in production
+    critical: false
+
+  - id: HYG02
+    name: Print Statement
+    pattern: ^\s*print\s*\(
+    weight: 5
+    type: regex
+    desc: Debug output
+    critical: false
+
+  - id: HYG03
+    name: Debugger Statement
+    pattern: \bdebugger\b
+    weight: 20
+    type: regex
+    desc: Breakpoint left in code
+    critical: false
+
+  - id: HYG04
+    name: Trailing Whitespace
+    pattern: " +$"
+    weight: 2
+    type: regex
+    desc: Sloppy formatting
+    critical: false
+
+  - id: HYG05
+    name: Multiple Blank Lines
+    pattern: \n{4,}
+    weight: 3
+    type: regex
+    desc: Excessive spacing
+    critical: false
+
+  - id: HYG06
+    name: Mixed Tabs/Spaces
+    pattern: ^\t+ +
+    weight: 10
+    type: regex
+    desc: Inconsistent indentation
+    critical: false
+
+  - id: HYG07
+    name: No Newline at EOF
+    weight: 5
+    type: eof
+    desc: Missing final newline
+    critical: false
+
+  - id: HYG08
+    name: Filename with Spaces
+    pattern: \s
+    weight: 12
+    type: filename
+    desc: Breaks shell scripts
+    critical: false
+
+code_smell:
+  - id: SME01
+    name: var Keyword (JS)
+    pattern: \bvar\s+\w+
+    weight: 15
+    type: regex
+    desc: Use let/const instead
+    critical: false
+
+  - id: SME02
+    name: Double Negation
+    pattern: "!!\\w+"
+    weight: 10
+    type: regex
+    desc: Unclear boolean conversion
+    critical: false
+
+  - id: SME03
+    name: Yoda Condition
+    pattern: (null|true|false|undefined|\d+)\s*===?\s*\w+
+    weight: 8
+    type: regex
+    desc: Backwards comparison
+    critical: false
+
+  - id: SME04
+    name: Nested Ternary
+    pattern: "\\?[^:]+\\?[^:]+:"
+    weight: 20
+    type: regex
+    desc: Unreadable conditional
+    critical: false
+
+  - id: SME05
+    name: Empty Function
+    pattern: (function|def)\s+\w+\s*\([^)]*\)\s*\{\s*\}
+    weight: 25
+    type: regex
+    desc: No-op function
+    critical: false
+
+  - id: SME06
+    name: Long Parameter List
+    pattern: (function|def)\s+\w+\s*\([^)]*,\s*[^)]*,\s*[^)]*,\s*[^)]*,\s*[^)]*,\s*[^)]*
+    weight: 30
+    type: regex
+    desc: 6+ parameters
+    critical: false
+
+  - id: SME07
+    name: Alert Usage
+    pattern: \balert\s*\(
+    weight: 25
+    type: regex
+    desc: Poor UX pattern
+    critical: false
+
+  - id: SME08
+    name: document.write
+    pattern: document\.write\(
+    weight: 30
+    type: regex
+    desc: Deprecated DOM manipulation
+    critical: false
+
+  - id: SME09
+    name: Float for Currency
+    pattern: (price|amount|total)\s*=\s*\d+\.\d+
+    weight: 35
+    type: regex
+    desc: Use integers or Decimal
+    critical: false
+
+  - id: SME10
+    name: Global Variable
+    pattern: ^(var|let|const)\s+[A-Z_]+\s*=
+    weight: 20
+    type: regex
+    desc: Global state risk
+    critical: false
+
+  - id: SME11
+    name: Empty else block
+    pattern: else\s*\{\s*\}
+    weight: 12
+    type: regex
+    desc: Clutter
+    critical: false
+
+testing:
+  - id: TST01
+    name: Skipped Test
+    pattern: (it\.skip|test\.skip|xit|xdescribe)
+    weight: 25
+    type: regex
+    desc: Disabled test case
+    critical: false
+
+  - id: TST02
+    name: Focused Test
+    pattern: (it\.only|test\.only|fit|fdescribe)
+    weight: 40
+    type: regex
+    desc: Test isolation left enabled
+    critical: false
+
+  - id: TST03
+    name: Fake Assertion
+    pattern: (expect|assert)\(true\)
+    weight: 30
+    type: regex
+    desc: Test that proves nothing
+    critical: false
+
+  - id: TST04
+    name: No Unit Tests
+    weight: 20
+    type: missing_test
+    desc: Critical logic uncovered
+    critical: false
+
+performance:
+  - id: PRF01
+    name: Sync FS Operation
+    pattern: fs\.(readFileSync|writeFileSync|existsSync)
+    weight: 25
+    type: regex
+    desc: Blocking I/O
+    critical: false
+
+  - id: PRF02
+    name: Nested Loop
+    pattern: for\s*\([^)]+\)\s*\{[^}]*for\s*\(
+    weight: 20
+    type: regex
+    desc: O(n²) complexity warning
+    critical: false
+
+  - id: PRF03
+    name: Array Push in Loop
+    pattern: for\s*\([^)]+\)\s*\{[^}]*\.push\(
+    weight: 15
+    type: regex
+    desc: Consider map/filter
+    critical: false
+
+  - id: PRF04
+    name: Blocking Event Loop
+    pattern: (while|for)\s*\([^)]*\)\s*\{[^}]{200,}\}
+    weight: 30
+    type: regex
+    desc: Heavy computation on main thread
+    critical: false
+
+documentation:
+  - id: DOC01
+    name: No JSDoc
+    pattern: (export\s+)?(function|class)\s+\w+[^{]*\{(?![\s\S]*?/\*\*)
+    weight: 8
+    type: regex
+    desc: Missing documentation
+    critical: false
+
+  - id: DOC02
+    name: Misleading Comment
+    pattern: (//|#)\s*(this|should|must|will)\s+(not|never)
+    weight: 12
+    type: regex
+    desc: Confusing comment
+    critical: false
+
+  - id: DOC03
+    name: Broken Link in Docs
+    pattern: \[.*\]\(http.*404
+    weight: 15
+    type: regex
+    desc: Link rot
+    critical: false
+
+  - id: DOC04
+    name: Condescending Language
+    pattern: \b(simply|just|obviously|trivial)\b
+    weight: 8
+    type: regex
+    desc: Remove from docs
+    critical: false
+
+  - id: DOC05
+    name: Vague Error Description
+    pattern: (returns\s+data|returns\s+object)
+    weight: 10
+    type: regex
+    desc: Specify exact shape
+    critical: false
+
+  - id: DOC06
+    name: Passive Voice in Docs
+    pattern: (is\s+sent|are\s+processed|was\s+created)
+    weight: 5
+    type: regex
+    desc: Use active voice
+    critical: false
+
+  - id: DOC07
+    name: Missing README
+    pattern: ^README\.md$
+    weight: 30
+    type: missing_file
+    desc: Required documentation
+    critical: false
+
+  - id: DOC08
+    name: Click Here Links
+    pattern: \[click\s+here\]
+    weight: 10
+    type: regex
+    desc: Use descriptive link text
+    critical: false
+
+  - id: DOC09
+    name: Outdated Copyright Year
+    pattern: Copyright.*20(0|1)[0-9]
+    weight: 5
+    type: regex
+    desc: Update year
+    critical: false
+
+dependencies:
+  - id: DEP01
+    name: Absolute Import
+    pattern: import\s+.*\s+from\s+['"]/(src|app|lib)
+    weight: 20
+    type: regex
+    desc: Non-portable path
+    critical: false
+
+  - id: DEP02
+    name: Wildcard Import
+    pattern: from\s+\w+\s+import\s+\*
+    weight: 25
+    type: regex
+    desc: Namespace pollution
+    critical: false
+
+  - id: DEP03
+    name: Dev Dependency in Code
+    pattern: (require|import)\s*\(['"](@types/|jest|mocha|chai)
+    weight: 40
+    type: regex
+    desc: Test lib in production
+    critical: false
+
+  - id: DEP04
+    name: Unused Package.json Dep
+    pattern: '"(react|vue|angular)":'
+    weight: 15
+    type: regex
+    desc: Security risk
+    critical: false
+
+  - id: DEP05
+    name: Importing Entire Library
+    pattern: import\s+\*\s+as\s+
+    weight: 18
+    type: regex
+    desc: Tree-shaking failure
+    critical: false
+
+vcs:
+  - id: VCS01
+    name: Merge Conflict Marker
+    pattern: ^(<<<<<<<|=======|>>>>>>>)
+    weight: 100
+    type: regex
+    desc: Unresolved conflict
+    critical: true
+
+  - id: VCS02
+    name: .DS_Store Committed
+    pattern: \.DS_Store$
+    weight: 20
+    type: filename
+    desc: OS-specific file
+    critical: false
+
+  - id: VCS03
+    name: node_modules Committed
+    pattern: node_modules/
+    weight: 60
+    type: path
+    desc: Dependencies in repo
+    critical: false
+
+  - id: VCS04
+    name: __pycache__ Committed
+    pattern: __pycache__
+    weight: 40
+    type: path
+    desc: Build artifacts
+    critical: false
+
+  - id: VCS05
+    name: Missing .gitignore
+    pattern: ^\.gitignore$
+    weight: 35
+    type: missing_file
+    desc: Risk of committing artifacts
+    critical: false
+
+  - id: VCS06
+    name: Binary in Git History
+    pattern: \.(exe|dmg|zip|tar\.gz)$
+    weight: 30
+    type: filename
+    desc: Git is not Dropbox
+    critical: false
+
+  - id: VCS07
+    name: IDE Settings Committed
+    pattern: \.(vscode|idea)/
+    weight: 15
+    type: path
+    desc: Personal preference pollution
+    critical: false
+
+naming:
+  - id: NAM01
+    name: Single Letter Var
+    pattern: (let|const|var)\s+[a-z]\s*=(?!.*for)
+    weight: 15
+    type: regex
+    desc: Unclear variable name
+    critical: false
+
+  - id: NAM02
+    name: Abbreviation Hell
+    pattern: (let|const|var)\s+(tmp|temp|data|obj|arr)\d+
+    weight: 18
+    type: regex
+    desc: Generic naming
+    critical: false
+
+  - id: NAM03
+    name: Hungarian Notation
+    pattern: (str|int|bool|arr|obj)[A-Z]\w+
+    weight: 12
+    type: regex
+    desc: Outdated convention
+    critical: false
+
+  - id: NAM04
+    name: Typo in Identifier
+    pattern: (funtion|recieve|teh|reciever)
+    weight: 10
+    type: regex
+    desc: Breaks intellisense
+    critical: false
+
+  - id: NAM05
+    name: Inconsistent Case
+    pattern: (user_id.*userId|snake_case.*camelCase)
+    weight: 12
+    type: regex
+    desc: Pick one convention
+    critical: false
+
+ux:
+  - id: UX01
+    name: Scroll Hijacking
+    pattern: (overflow-y|scrollBehavior):\s*hidden
+    weight: 30
+    type: regex
+    desc: Nauseating UX
+    critical: false
+
+  - id: UX02
+    name: Disable Pinch Zoom
+    pattern: user-scalable\s*=\s*no
+    weight: 40
+    type: regex
+    desc: Accessibility violation
+    critical: false
+
+  - id: UX03
+    name: Autoplay Video
+    pattern: <video.*autoplay
+    weight: 35
+    type: regex
+    desc: Hostile UX
+    critical: false
+
+  - id: UX04
+    name: Low Contrast Text
+    pattern: 'color:\s*#(ccc|ddd|eee)'
+    weight: 25
+    type: regex
+    desc: Unreadable
+    critical: false
+
+  - id: UX05
+    name: Placeholder as Label
+    pattern: placeholder=['"][^'"]+['"](?!.*<label)
+    weight: 20
+    type: regex
+    desc: Disappears on input
+    critical: false
+
+  - id: UX06
+    name: Tiny Tap Target
+    pattern: (width|height):\s*(10|15|20|25|30)px
+    weight: 18
+    type: regex
+    desc: Mobile UX fail
+    critical: false
+
+  - id: UX07
+    name: Mystery Meat Nav
+    pattern: <button>[^<]*<(svg|i)
+    weight: 22
+    type: regex
+    desc: No labels on icons
+    critical: false
+
+  - id: UX08
+    name: Carousel for Critical Content
+    pattern: (carousel|slider|swiper)
+    weight: 25
+    type: regex
+    desc: Users skip slides
+    critical: false
+
+  - id: UX09
+    name: No Loading Indicator
+    pattern: fetch\(.*\)\.then
+    weight: 15
+    type: regex
+    desc: Looks frozen
+    critical: false
+
+  - id: UX10
+    name: Destructive Action No Confirm
+    pattern: (delete|remove).*onClick
+    weight: 30
+    type: regex
+    desc: Require confirmation
+    critical: false
+
+  - id: UX11
+    name: Missing Alt Text
+    pattern: <img(?![^>]*alt=)
+    weight: 20
+    type: regex
+    desc: Screen reader fail
+    critical: false
+
+  - id: UX12
+    name: Custom Cursor
+    pattern: 'cursor:\s*url\('
+    weight: 15
+    type: regex
+    desc: Laggy and confusing
+    critical: false
+
+  - id: UX13
+    name: Sticky Header >25% screen
+    pattern: (position:\s*sticky.*height:\s*(25|30|40))
+    weight: 20
+    type: regex
+    desc: Reduces readable area
+    critical: false
+
+  - id: UX14
+    name: Form Reset on Error
+    pattern: form\.reset\(\)
+    weight: 35
+    type: regex
+    desc: Most frustrating UX
+    critical: false
+
+  - id: UX15
+    name: target=_blank without rel
+    pattern: target=['"]_blank['"](?![^>]*rel=)
+    weight: 18
+    type: regex
+    desc: Security risk
+    critical: false
+
+ai_slop:
+  - id: AI01
+    name: Committed AI Response
+    pattern: As an AI language model
+    weight: 500
+    type: regex
+    desc: Literally copy-pasted ChatGPT
+    critical: true
+
+  - id: AI02
+    name: AI Preamble in Code
+    pattern: (Here is the code you asked for|Here's a solution|I'll help you)
+    weight: 200
+    type: regex
+    desc: AI-generated without review
+    critical: true
+
+  - id: AI03
+    name: Hallucinated Comment
+    pattern: "(//|#).*\\(Note: this is a simplified\\)"
+    weight: 100
+    type: regex
+    desc: AI disclaimer in production
+    critical: false
+
+  - id: AI04
+    name: Lorem Ipsum in Production
+    pattern: Lorem ipsum dolor
+    weight: 80
+    type: regex
+    desc: Placeholder text shipped
+    critical: false
+
+react:
+  - id: RCT01
+    name: useEffect without deps
+    pattern: useEffect\([^)]+\)\s*(?!.*,\s*\[)
+    weight: 50
+    type: regex
+    desc: Missing dependency array
+    critical: false
+
+  - id: RCT02
+    name: Index as key
+    pattern: key=\{index\}
+    weight: 40
+    type: regex
+    desc: Breaks React reconciliation
+    critical: false
+
+  - id: RCT03
+    name: Inline Function in JSX
+    pattern: onClick=\{.*=>\s*{
+    weight: 25
+    type: regex
+    desc: Re-renders on every cycle
+    critical: false
+
+  - id: RCT04
+    name: setState in render
+    pattern: (setState|setCount)\(.*\)(?!.*useEffect)
+    weight: 60
+    type: regex
+    desc: Infinite render loop
+    critical: false
+
+  - id: RCT05
+    name: window.open without noopener
+    pattern: window\.open\([^)]+\)(?!.*noopener)
+    weight: 45
+    type: regex
+    desc: Security vulnerability
+    critical: false
+
+git:
+  - id: GIT01
+    name: Lazy Commit Message
+    weight: 15
+    type: git
+    desc: Message provides zero context
+    critical: false
+
+  - id: GIT02
+    name: Revert War
+    weight: 30
+    type: git
+    desc: Reverting a revert indicates chaos
+    critical: false
+
+  - id: GIT03
+    name: Unprofessional Commit
+    weight: 10
+    type: git
+    desc: Commit contains slang/jokes
+    critical: false
+
+  - id: GIT04
+    name: Monster Commit
+    weight: 40
+    type: git
+    desc: Single commit touches >50 files
+    critical: false
+
+  - id: GIT05
+    name: Friday Deploy
+    weight: 50
+    type: git
+    desc: Read-only Friday violation
+    critical: false
+
+  - id: GIT06
+    name: 3AM Commit
+    weight: 20
+    type: git
+    desc: Coding at ungodly hours
+    critical: false
+
+  - id: GIT07
+    name: Missing Ticket ID
+    weight: 12
+    type: git
+    desc: No issue reference in commit
+    critical: false

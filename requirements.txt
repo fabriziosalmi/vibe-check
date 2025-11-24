@@ -1,3 +1,8 @@
 # Python dependencies for VibeGuard Auditor
-# Currently no external dependencies required - uses only stdlib
-# Add future dependencies here (e.g., PyYAML, regex, etc.)
+
+# Core dependencies
+PyYAML>=6.0.1
+
+# Development dependencies (optional, for testing)
+# pytest>=7.4.0
+# pytest-cov>=4.1.0
