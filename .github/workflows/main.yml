@@ -1,0 +1,16 @@
+name: Vibe Check
+on: [push, pull_request,workflow_dispatch]
+
+jobs:
+  vibe-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 50  # Required for git history audit
+
+      - name: Run Vibe Check
+        uses: fabriziosalmi/vibe-check@v1.2.0
+        with:
+          threshold: 850  # Optional: Default is 800
