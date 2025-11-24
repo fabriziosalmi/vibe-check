@@ -1,4 +1,4 @@
-# 🛡️ VibeGuard Auditor
+# 🛡️ Vibe Check
 
 [![GitHub Marketplace](https://img.shields.io/badge/Marketplace-VibeGuard-blue?logo=github)](https://github.com/marketplace/actions/vibeguard-auditor)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
