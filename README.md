@@ -75,7 +75,7 @@ cd vibe-check
 pip install -r requirements.txt
 
 # Run the scanner
-python vibeguard_new.py
+python vibeguard.py
 ```
 
 ---
@@ -86,25 +86,25 @@ python vibeguard_new.py
 
 ```bash
 # Scan current directory with default threshold (800)
-python vibeguard_new.py
+python vibeguard.py
 
 # Set custom threshold
-python vibeguard_new.py --threshold 900
+python vibeguard.py --threshold 900
 
 # Enable brutal mode (double penalties, fail-fast on critical violations)
-python vibeguard_new.py --brutal-mode
+python vibeguard.py --brutal-mode
 
 # Verbose output
-python vibeguard_new.py --verbose
+python vibeguard.py --verbose
 
 # Quiet mode (errors only)
-python vibeguard_new.py --quiet
+python vibeguard.py --quiet
 
 # Skip git history audit
-python vibeguard_new.py --no-git
+python vibeguard.py --no-git
 
 # Scan specific directory
-python vibeguard_new.py --directory ./src
+python vibeguard.py --directory ./src
 ```
 
 ### Configuration File
@@ -164,7 +164,7 @@ vibe-check/
 │   ├── test_violations.py   # Sample file with deliberate violations
 │   ├── test_violations.js   # JS violations for testing
 │   └── test_violations.md   # Documentation violations
-├── vibeguard_new.py          # Main entry point (REFACTORED)
+├── vibeguard.py          # Main entry point (REFACTORED)
 ├── vibeguard.py              # Legacy entry point (deprecated)
 ├── requirements.txt          # Python dependencies
 ├── action.yml                # GitHub Action definition
@@ -188,7 +188,7 @@ vibe-check/
 - **src/reporter.py**: GitHub annotations, job summaries, console output
 - **src/logger.py**: Structured logging with verbosity levels
 - **config/rules.yaml**: Externalized rule definitions
-- **vibeguard_new.py**: Clean CLI with argparse
+- **vibeguard.py**: Clean CLI with argparse
 
 ---
 
@@ -202,7 +202,7 @@ python tests/test_rules.py
 python tests/test_scanner.py
 
 # Scan test violation files (should find many violations)
-python vibeguard_new.py --directory tests --threshold 0
+python vibeguard.py --directory tests --threshold 0
 
 # With pytest (optional)
 pip install pytest pytest-cov
@@ -229,7 +229,7 @@ security:
 
 ```bash
 # Use custom rules file
-python vibeguard_new.py --rules my_custom_rules.yaml
+python vibeguard.py --rules my_custom_rules.yaml
 ```
 
 ---
