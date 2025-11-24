@@ -1,9 +1,5 @@
 # 🛡️ Vibe Check
 
-[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-VibeGuard-purple.svg?style=for-the-badge&logo=github)](https://github.com/marketplace/actions/vibeguard-auditor)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
-[![Vibes: Immaculate](https://img.shields.io/badge/Vibes-Immaculate-pink.svg?style=for-the-badge)](https://github.com/marketplace/actions/vibeguard-auditor)
-
 > **Are you Engineering or just Vibecoding?**
 > Vibe Check is a ruthless, Python-based CI/CD auditor that ranks your repository quality on a scale of 0 to 1000.
 
