@@ -230,6 +230,12 @@ def audit_git_history():
     git_violations = []
     git_deductions = 0
     
+    # Check if .git directory exists
+    if not os.path.isdir('.git'):
+        print("::warning::Git history audit skipped (no .git directory found)")
+        print("::warning::To enable git audit, use: actions/checkout@v4 with fetch-depth: 50")
+        return git_deductions, git_violations
+    
     try:
         # Get last 50 commits: hash|author|date|message
         result = subprocess.run(
@@ -240,10 +246,16 @@ def audit_git_history():
         )
         
         if result.returncode != 0:
-            print("::warning::Git history audit skipped (not a git repository)")
+            print("::warning::Git history audit skipped (git log failed)")
             return git_deductions, git_violations
         
         commits = result.stdout.strip().split('\n')
+        
+        # Skip if no commits or only 1 commit (shallow clone)
+        if not commits or len(commits) <= 1 or commits[0] == '':
+            print("::warning::Git history audit skipped (insufficient commit history)")
+            print("::warning::To enable git audit, use: actions/checkout@v4 with fetch-depth: 50")
+            return git_deductions, git_violations
         
         # Lazy commit message patterns
         lazy_patterns = [

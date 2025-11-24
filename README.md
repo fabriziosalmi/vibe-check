@@ -57,6 +57,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 50  # Required for git history audit
 
       - name: Run VibeGuard Auditor
         uses: fabriziosalmi/vibe-check@v1.2.0
@@ -64,11 +66,18 @@ jobs:
           threshold: 850  # Optional: Default is 800
 ```
 
+> **💡 Note:** Git history audit requires `fetch-depth: 50` in checkout step to analyze commit patterns. Without it, only code analysis runs.
+
 ### 🔥 Brutal Mode (Recommended for Main Branch)
 
 Enable **double penalties** and **fail-fast** on critical security issues:
 
 ```yaml
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 50  # Enable git history audit
+          
       - name: Run VibeGuard (Brutal Mode)
         uses: fabriziosalmi/vibe-check@v1.2.0
         with:
