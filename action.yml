@@ -1,5 +1,5 @@
 name: 'VibeGuard Auditor'
-description: 'Stop vibecoding, start engineering.'
+description: 'Stop vibecoding, start engineering. SOTA code quality gatekeeper that detects security issues, code smells, and technical debt.'
 author: 'fabriziosalmi'
 branding:
   icon: 'shield'
@@ -10,6 +10,10 @@ inputs:
     description: 'Minimum score required to pass the pipeline (0-1000)'
     required: false
     default: '800'
+  brutal_mode:
+    description: 'Enable brutal mode: double penalties and fail-fast on critical security violations'
+    required: false
+    default: 'false'
 
 outputs:
   score:

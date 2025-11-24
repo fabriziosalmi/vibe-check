@@ -9,15 +9,33 @@ import os
 import re
 import sys
 import json
+import ast
+import subprocess
+from datetime import datetime
 
 # Leggiamo gli input dall'ambiente (passati da action.yml)
 INPUT_THRESHOLD = int(os.environ.get("INPUT_THRESHOLD", 800))
+INPUT_BRUTAL_MODE = os.environ.get("INPUT_BRUTAL_MODE", "false").lower() == "true"
 STARTING_SCORE = 1000
+
+# Carica config personalizzata se esiste
+IGNORE_RULES = set()
+EXCLUDE_PATTERNS = []
+
+if os.path.exists(".vibeguardrc"):
+    try:
+        with open(".vibeguardrc", "r") as f:
+            config = json.load(f)
+            IGNORE_RULES = set(config.get("ignore", []))
+            EXCLUDE_PATTERNS = config.get("exclude_files", [])
+            print(f"📝 Loaded .vibeguardrc: Ignoring {len(IGNORE_RULES)} rules, {len(EXCLUDE_PATTERNS)} patterns")
+    except Exception as e:
+        print(f"⚠️  Failed to load .vibeguardrc: {e}")
 
 # 300+ SOTA Rules: Anti-Vibecoding Patterns from Code Quality + UI/UX + Documentation
 RULES = [
     # ========== SECURITY (Critical - 60-100 pts) ==========
-    {"id": "SEC01", "name": "Committed .env file", "pattern": r"^\.env$", "weight": 100, "type": "filename", "desc": "Security risk: exposed secrets"},
+    {"id": "SEC01", "name": "Committed .env file", "pattern": r"^\.env$", "weight": 100, "type": "filename", "desc": "Security risk: exposed secrets", "critical": True},
     {"id": "SEC02", "name": "AWS Access Key Pattern", "pattern": r"(?<![A-Z0-9])[A-Z0-9]{20}(?![A-Z0-9])", "weight": 100, "type": "regex", "desc": "Possible hardcoded AWS credential"},
     {"id": "SEC03", "name": "Private Key File", "pattern": r"\.(pem|key|p12|pfx)$", "weight": 100, "type": "filename", "desc": "Private key should not be committed"},
     {"id": "SEC04", "name": "Hardcoded Password", "pattern": r"password\s*=\s*['\"][^'\"]{3,}['\"]", "weight": 80, "type": "regex", "desc": "Hardcoded credential"},
@@ -138,20 +156,257 @@ RULES = [
     {"id": "UX13", "name": "Sticky Header >25% screen", "pattern": r"(position:\s*sticky.*height:\s*(25|30|40))", "weight": 20, "type": "regex", "desc": "Reduces readable area"},
     {"id": "UX14", "name": "Form Reset on Error", "pattern": r"form\.reset\(\)", "weight": 35, "type": "regex", "desc": "Most frustrating UX"},
     {"id": "UX15", "name": "target=_blank without rel", "pattern": r"target=['\"]_blank['\"](?![^>]*rel=)", "weight": 18, "type": "regex", "desc": "Security risk"},
+    
+    # ========== AI SLOP DETECTION (Critical - 100-500 pts) ==========
+    {"id": "AI01", "name": "Committed AI Response", "pattern": r"As an AI language model", "weight": 500, "type": "regex", "desc": "Literally copy-pasted ChatGPT", "critical": True},
+    {"id": "AI02", "name": "AI Preamble in Code", "pattern": r"(Here is the code you asked for|Here's a solution|I'll help you)", "weight": 200, "type": "regex", "desc": "AI-generated without review", "critical": True},
+    {"id": "AI03", "name": "Hallucinated Comment", "pattern": r"(//|#).*\(Note: this is a simplified)", "weight": 100, "type": "regex", "desc": "AI disclaimer in production"},
+    {"id": "AI04", "name": "Lorem Ipsum in Production", "pattern": r"Lorem ipsum dolor", "weight": 80, "type": "regex", "desc": "Placeholder text shipped"},
+    
+    # ========== REACT ANTI-PATTERNS (High - 30-60 pts) ==========
+    {"id": "RCT01", "name": "useEffect without deps", "pattern": r"useEffect\([^)]+\)\s*(?!.*,\s*\[)", "weight": 50, "type": "regex", "desc": "Missing dependency array"},
+    {"id": "RCT02", "name": "Index as key", "pattern": r"key=\{index\}", "weight": 40, "type": "regex", "desc": "Breaks React reconciliation"},
+    {"id": "RCT03", "name": "Inline Function in JSX", "pattern": r"onClick=\{.*=>\s*{", "weight": 25, "type": "regex", "desc": "Re-renders on every cycle"},
+    {"id": "RCT04", "name": "setState in render", "pattern": r"(setState|setCount)\(.*\)(?!.*useEffect)", "weight": 60, "type": "regex", "desc": "Infinite render loop"},
+    {"id": "RCT05", "name": "window.open without noopener", "pattern": r"window\.open\([^)]+\)(?!.*noopener)", "weight": 45, "type": "regex", "desc": "Security vulnerability"},
+    
+    # ========== GIT COMMIT HYGIENE (Medium-High - 10-50 pts) ==========
+    # These are applied via git log analysis, not file scanning
+    {"id": "GIT01", "name": "Lazy Commit Message", "weight": 15, "type": "git", "desc": "Message provides zero context"},
+    {"id": "GIT02", "name": "Revert War", "weight": 30, "type": "git", "desc": "Reverting a revert indicates chaos"},
+    {"id": "GIT03", "name": "Unprofessional Commit", "weight": 10, "type": "git", "desc": "Commit contains slang/jokes"},
+    {"id": "GIT04", "name": "Monster Commit", "weight": 40, "type": "git", "desc": "Single commit touches >50 files"},
+    {"id": "GIT05", "name": "Friday Deploy", "weight": 50, "type": "git", "desc": "Read-only Friday violation"},
+    {"id": "GIT06", "name": "3AM Commit", "weight": 20, "type": "git", "desc": "Coding at ungodly hours"},
+    {"id": "GIT07", "name": "Missing Ticket ID", "weight": 12, "type": "git", "desc": "No issue reference in commit"},
 ]
 
 IGNORE_DIRS = {'.git', '.github', 'node_modules', 'dist', 'build', 'venv', '__pycache__', '.venv', 'vendor'}
 IGNORE_FILES = {'package-lock.json', 'yarn.lock', 'poetry.lock', 'Cargo.lock', 'go.sum'}
+
+def is_excluded(filepath):
+    """Check if file matches exclusion patterns from config"""
+    for pattern in EXCLUDE_PATTERNS:
+        if re.match(pattern.replace('*', '.*'), filepath):
+            return True
+    return False
+
+def is_comment_line(line, file_ext):
+    """Detect if a line is a comment based on file type"""
+    stripped = line.strip()
+    if file_ext in ['.py', '.sh', '.bash', '.yml', '.yaml']:
+        return stripped.startswith('#')
+    elif file_ext in ['.js', '.ts', '.jsx', '.tsx', '.java', '.c', '.cpp', '.go']:
+        return stripped.startswith('//') or stripped.startswith('*')
+    return False
+
+def check_python_ast_violations(filepath, content):
+    """Use AST to detect Python-specific violations (reduces false positives)"""
+    violations = []
+    try:
+        tree = ast.parse(content)
+        for node in ast.walk(tree):
+            # Detect eval() usage
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == 'eval':
+                violations.append({
+                    "rule_id": "SEC06",
+                    "line": node.lineno,
+                    "desc": "Real eval() call detected via AST"
+                })
+            # Detect print() in non-test files
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == 'print':
+                if 'test' not in filepath:
+                    violations.append({
+                        "rule_id": "HYG02",
+                        "line": node.lineno,
+                        "desc": "Print statement in production code"
+                    })
+    except SyntaxError:
+        pass  # Ignore syntax errors, regex will still catch some issues
+    return violations
+
+def audit_git_history():
+    """Analyze last 50 commits for behavioral anti-patterns"""
+    git_violations = []
+    git_deductions = 0
+    
+    try:
+        # Get last 50 commits: hash|author|date|message
+        result = subprocess.run(
+            ['git', 'log', '-n', '50', '--pretty=format:%H|%an|%cd|%s', '--date=format:%a %H:%M'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        if result.returncode != 0:
+            print("::warning::Git history audit skipped (not a git repository)")
+            return git_deductions, git_violations
+        
+        commits = result.stdout.strip().split('\n')
+        
+        # Lazy commit message patterns
+        lazy_patterns = [
+            r'^(wip|fix|test|asdasd|asd|tmp|temp|debug|update|changes)$',
+            r'^(merge|rebase|commit|push)$',
+            r'^\.$',
+            r'^[0-9]+$',
+        ]
+        
+        # Unprofessional keywords
+        unpro_keywords = ['oops', 'lol', 'yolo', 'fml', 'wtf', 'fuck', 'shit', 'hope this works', 'fingers crossed', 'idk']
+        
+        for commit_line in commits:
+            if not commit_line:
+                continue
+            
+            parts = commit_line.split('|')
+            if len(parts) < 4:
+                continue
+            
+            commit_hash = parts[0][:7]  # Short SHA
+            author = parts[1]
+            date_str = parts[2]  # "Fri 18:30"
+            message = parts[3].lower()
+            
+            # GIT01: Lazy commit message
+            for pattern in lazy_patterns:
+                if re.match(pattern, message, re.IGNORECASE):
+                    penalty = 15 * (2 if INPUT_BRUTAL_MODE else 1)
+                    git_deductions += penalty
+                    git_violations.append({
+                        "file": f"commit {commit_hash}",
+                        "rule": "Lazy Commit Message",
+                        "id": "GIT01",
+                        "deduction": penalty,
+                        "desc": f"'{message[:50]}' provides zero context"
+                    })
+                    print(f"::warning::[GIT01] Lazy commit: {commit_hash} '{message[:50]}' (-{penalty} pts)")
+                    break
+            
+            # GIT02: Revert war
+            if 'revert "revert' in message:
+                penalty = 30 * (2 if INPUT_BRUTAL_MODE else 1)
+                git_deductions += penalty
+                git_violations.append({
+                    "file": f"commit {commit_hash}",
+                    "rule": "Revert War",
+                    "id": "GIT02",
+                    "deduction": penalty,
+                    "desc": "Reverting a revert indicates chaos"
+                })
+                print(f"::warning::[GIT02] Revert war: {commit_hash} (-{penalty} pts)")
+            
+            # GIT03: Unprofessional commit
+            for keyword in unpro_keywords:
+                if keyword in message:
+                    penalty = 10 * (2 if INPUT_BRUTAL_MODE else 1)
+                    git_deductions += penalty
+                    git_violations.append({
+                        "file": f"commit {commit_hash}",
+                        "rule": "Unprofessional Commit",
+                        "id": "GIT03",
+                        "deduction": penalty,
+                        "desc": f"Contains '{keyword}'"
+                    })
+                    print(f"::warning::[GIT03] Unprofessional: {commit_hash} contains '{keyword}' (-{penalty} pts)")
+                    break
+            
+            # GIT05: Friday deploy (after 16:00)
+            if 'Fri' in date_str:
+                time_part = date_str.split()[1]  # "18:30"
+                hour = int(time_part.split(':')[0])
+                if hour >= 16:
+                    penalty = 50 * (2 if INPUT_BRUTAL_MODE else 1)
+                    git_deductions += penalty
+                    git_violations.append({
+                        "file": f"commit {commit_hash}",
+                        "rule": "Friday Deploy",
+                        "id": "GIT05",
+                        "deduction": penalty,
+                        "desc": f"Committed on Friday at {time_part}"
+                    })
+                    print(f"::warning::[GIT05] Friday deploy: {commit_hash} at {time_part} (-{penalty} pts)")
+            
+            # GIT06: 3AM commits (00:00-05:59)
+            try:
+                time_part = date_str.split()[1]
+                hour = int(time_part.split(':')[0])
+                if 0 <= hour < 6:
+                    penalty = 20 * (2 if INPUT_BRUTAL_MODE else 1)
+                    git_deductions += penalty
+                    git_violations.append({
+                        "file": f"commit {commit_hash}",
+                        "rule": "3AM Commit",
+                        "id": "GIT06",
+                        "deduction": penalty,
+                        "desc": f"Committed at {time_part} (ungodly hours)"
+                    })
+                    print(f"::warning::[GIT06] 3AM commit: {commit_hash} at {time_part} (-{penalty} pts)")
+            except (IndexError, ValueError):
+                pass
+            
+            # GIT07: Missing ticket ID (simple check for PROJ-123 pattern)
+            if not re.search(r'[A-Z]+-[0-9]+', message):
+                penalty = 12 * (2 if INPUT_BRUTAL_MODE else 1)
+                git_deductions += penalty
+                git_violations.append({
+                    "file": f"commit {commit_hash}",
+                    "rule": "Missing Ticket ID",
+                    "id": "GIT07",
+                    "deduction": penalty,
+                    "desc": "No issue reference (PROJ-123)"
+                })
+                # Don't print for GIT07 to avoid spam
+        
+        # GIT04: Monster commits (check file count in each commit)
+        for commit_line in commits[:10]:  # Check only last 10 for performance
+            if not commit_line:
+                continue
+            commit_hash = commit_line.split('|')[0]
+            
+            stat_result = subprocess.run(
+                ['git', 'diff-tree', '--no-commit-id', '--numstat', '-r', commit_hash],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            
+            if stat_result.returncode == 0:
+                file_count = len(stat_result.stdout.strip().split('\n'))
+                if file_count > 50:
+                    penalty = 40 * (2 if INPUT_BRUTAL_MODE else 1)
+                    git_deductions += penalty
+                    git_violations.append({
+                        "file": f"commit {commit_hash[:7]}",
+                        "rule": "Monster Commit",
+                        "id": "GIT04",
+                        "deduction": penalty,
+                        "desc": f"{file_count} files changed in single commit"
+                    })
+                    print(f"::warning::[GIT04] Monster commit: {commit_hash[:7]} touched {file_count} files (-{penalty} pts)")
+    
+    except subprocess.TimeoutExpired:
+        print("::warning::Git history audit timed out")
+    except FileNotFoundError:
+        print("::warning::Git not found, skipping history audit")
+    except Exception as e:
+        print(f"::warning::Git history audit failed: {e}")
+    
+    return git_deductions, git_violations
 
 def run_scan():
     """Esegue la scansione completa del repository"""
     score = STARTING_SCORE
     violations = []
     
-    print(f"::group::🔍 Starting VibeGuard Scan (Threshold: {INPUT_THRESHOLD})")
+    mode_indicator = "🔥 BRUTAL MODE" if INPUT_BRUTAL_MODE else "Standard Mode"
+    print(f"::group::🔍 Starting VibeGuard Scan ({mode_indicator}, Threshold: {INPUT_THRESHOLD})")
     print(f"📊 Starting Score: {STARTING_SCORE}")
     print(f"🎯 Target Threshold: {INPUT_THRESHOLD}")
-    print(f"📋 Active Rules: {len(RULES)}")
+    print(f"📋 Active Rules: {len([r for r in RULES if r['id'] not in IGNORE_RULES])}/{len(RULES)}")
+    if IGNORE_RULES:
+        print(f"🚫 Ignored Rules: {', '.join(sorted(IGNORE_RULES))}")
     print("")
 
     files_scanned = 0
@@ -166,9 +421,31 @@ def run_scan():
                 
             filepath = os.path.relpath(os.path.join(root, file))
             
+            # Check exclusion patterns
+            if is_excluded(filepath):
+                continue
+            
             # 1. Check Filename Rules
             for r in RULES:
+                if r['id'] in IGNORE_RULES:
+                    continue
                 if r['type'] == 'filename' and re.search(r['pattern'], file):
+                    penalty = r['weight'] * (2 if INPUT_BRUTAL_MODE else 1)
+                    score -= penalty
+                    violations.append({
+                        "file": filepath, 
+                        "rule": r['name'], 
+                        "id": r['id'],
+                        "deduction": penalty,
+                        "desc": r['desc']
+                    })
+                    print(f"::error file={filepath}::[{r['id']}] {r['name']} (-{penalty} pts)")
+                    
+                    # Brutal Mode: Fail Fast on Critical
+                    if INPUT_BRUTAL_MODE and r.get('critical', False):
+                        print(f"::error::💀 BRUTAL MODE: Critical violation detected. Terminating immediately.")
+                        print(f"::error::Rule {r['id']}: {r['name']} in {filepath}")
+                        sys.exit(1)
                     score -= r['weight']
                     violations.append({
                         "file": filepath, 
@@ -177,22 +454,28 @@ def run_scan():
                         "deduction": r['weight'],
                         "desc": r['desc']
                     })
-                    print(f"::error file={filepath}::[{r['id']}] {r['name']} (-{r['weight']} pts)")
-            
             # 2. Check Path Rules
             for r in RULES:
+                if r['id'] in IGNORE_RULES:
+                    continue
                 if r['type'] == 'path' and re.search(r['pattern'], filepath):
-                    score -= r['weight']
+                    penalty = r['weight'] * (2 if INPUT_BRUTAL_MODE else 1)
+                    score -= penalty
                     violations.append({
                         "file": filepath, 
                         "rule": r['name'], 
                         "id": r['id'],
-                        "deduction": r['weight'],
+                        "deduction": penalty,
                         "desc": r['desc']
                     })
-                    print(f"::error file={filepath}::[{r['id']}] {r['name']} (-{r['weight']} pts)")
+                    print(f"::error file={filepath}::[{r['id']}] {r['name']} (-{penalty} pts)")
+                    
+                    if INPUT_BRUTAL_MODE and r.get('critical', False):
+                        print(f"::error::💀 BRUTAL MODE: Critical violation. Terminating.")
+                        sys.exit(1)
 
             # 3. Check Content (solo file testuali)
+            file_ext = os.path.splitext(file)[1]
             if file.endswith(('.py', '.js', '.ts', '.jsx', '.tsx', '.go', '.java', '.c', '.cpp', '.h', 
                              '.rb', '.php', '.html', '.css', '.scss', '.sass', '.vue', '.svelte',
                              '.md', '.txt', '.yml', '.yaml', '.json', '.xml', '.sh', '.bash')):
@@ -202,49 +485,89 @@ def run_scan():
                         lines = content.splitlines()
                         files_scanned += 1
                         
+                        # Python AST analysis for precision
+                        if file_ext == '.py':
+                            ast_violations = check_python_ast_violations(filepath, content)
+                            for av in ast_violations:
+                                rule = next((r for r in RULES if r['id'] == av['rule_id']), None)
+                                if rule and rule['id'] not in IGNORE_RULES:
+                                    penalty = rule['weight'] * (2 if INPUT_BRUTAL_MODE else 1)
+                                    score -= penalty
+                                    violations.append({
+                                        "file": filepath,
+                                        "rule": rule['name'],
+                                        "id": rule['id'],
+                                        "deduction": penalty,
+                                        "desc": av['desc'],
+                                        "line": av['line']
+                                    })
+                                    print(f"::warning file={filepath},line={av['line']}::[{rule['id']}] {rule['name']} (AST) (-{penalty} pts)")
+                        
                         # Check Line Count
                         for r in RULES:
+                            if r['id'] in IGNORE_RULES:
+                                continue
                             if r['type'] == 'lines' and len(lines) > r.get('max', float('inf')):
-                                score -= r['weight']
+                                penalty = r['weight'] * (2 if INPUT_BRUTAL_MODE else 1)
+                                score -= penalty
                                 violations.append({
                                     "file": filepath, 
                                     "rule": f"{r['name']} ({len(lines)} lines)", 
                                     "id": r['id'],
-                                    "deduction": r['weight'],
+                                    "deduction": penalty,
                                     "desc": r['desc']
                                 })
-                                print(f"::warning file={filepath}::[{r['id']}] File has {len(lines)} lines (-{r['weight']} pts)")
+                                print(f"::warning file={filepath}::[{r['id']}] File has {len(lines)} lines (-{penalty} pts)")
 
                         # Check EOF Newline
                         for r in RULES:
+                            if r['id'] in IGNORE_RULES:
+                                continue
                             if r['type'] == 'eof' and content and not content.endswith('\n'):
-                                score -= r['weight']
+                                penalty = r['weight'] * (2 if INPUT_BRUTAL_MODE else 1)
+                                score -= penalty
                                 violations.append({
                                     "file": filepath, 
                                     "rule": r['name'], 
                                     "id": r['id'],
-                                    "deduction": r['weight'],
+                                    "deduction": penalty,
                                     "desc": r['desc']
                                 })
-                                print(f"::warning file={filepath}::[{r['id']}] {r['name']} (-{r['weight']} pts)")
+                                print(f"::warning file={filepath}::[{r['id']}] {r['name']} (-{penalty} pts)")
 
-                        # Check Regex Patterns
+                        # Check Regex Patterns (with smart comment detection)
                         for r in RULES:
+                            if r['id'] in IGNORE_RULES:
+                                continue
                             if r['type'] == 'regex':
                                 matches = list(re.finditer(r['pattern'], content, re.MULTILINE | re.IGNORECASE))
                                 if matches:
                                     for match in matches[:3]:  # Limita a 3 match per regola per file
                                         line_num = content[:match.start()].count('\n') + 1
-                                        score -= r['weight']
+                                        line_content = lines[line_num - 1] if line_num <= len(lines) else ""
+                                        
+                                        # Smart filtering: Skip code-related rules if line is a comment
+                                        is_comment = is_comment_line(line_content, file_ext)
+                                        if is_comment and not r['id'].startswith(('DOC', 'STB03', 'STB04', 'STB05')):
+                                            continue  # Ignore code violations in comment lines
+                                        
+                                        penalty = r['weight'] * (2 if INPUT_BRUTAL_MODE else 1)
+                                        score -= penalty
                                         violations.append({
                                             "file": filepath, 
                                             "rule": r['name'], 
                                             "id": r['id'],
-                                            "deduction": r['weight'],
+                                            "deduction": penalty,
                                             "desc": r['desc'],
                                             "line": line_num
                                         })
-                                        print(f"::warning file={filepath},line={line_num}::[{r['id']}] {r['name']} (-{r['weight']} pts)")
+                                        print(f"::warning file={filepath},line={line_num}::[{r['id']}] {r['name']} (-{penalty} pts)")
+                                        
+                                        # Brutal Mode: Fail Fast on Critical
+                                        if INPUT_BRUTAL_MODE and r.get('critical', False):
+                                            print(f"::error::💀 BRUTAL MODE: Critical security violation!")
+                                            print(f"::error::Rule {r['id']}: {r['name']} at {filepath}:{line_num}")
+                                            sys.exit(1)
 
                 except Exception as e:
                     # Skip binary files or permission errors
@@ -254,6 +577,16 @@ def run_scan():
     print(f"📁 Files Scanned: {files_scanned}")
     print(f"⚠️  Total Violations: {len(violations)}")
     print(f"📉 Total Deductions: {STARTING_SCORE - score} pts")
+    print("::endgroup::")
+    
+    # ========== GIT HISTORY AUDIT ==========
+    print("")
+    print("::group::🌿 Auditing Git History (Last 50 Commits)")
+    git_deductions, git_violations = audit_git_history()
+    score -= git_deductions
+    violations.extend(git_violations)
+    print(f"📊 Git Deductions: -{git_deductions} pts")
+    print(f"⚠️  Git Violations: {len(git_violations)}")
     print("::endgroup::")
     
     return score, violations
@@ -305,7 +638,11 @@ def write_summary(score, violations):
             'DOC': '📝 Documentation',
             'DEP': '📦 Dependencies',
             'VCS': '🌿 Version Control',
-            'NAM': '🏷️  Naming'
+            'NAM': '🏷️  Naming',
+            'UX': '🎨 UI/UX',
+            'AI': '🤖 AI Slop',
+            'RCT': '⚛️  React',
+            'GIT': '🌿 Git Hygiene'
         }
         
         for cat_id in sorted(categories.keys()):

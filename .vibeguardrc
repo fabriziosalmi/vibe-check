@@ -1,0 +1,9 @@
+{
+  "ignore": [
+    "HYG02",
+    "GIT07"
+  ],
+  "exclude_files": [
+    "vibeguard.py"
+  ]
+}
