@@ -1,5 +1,5 @@
 name: 'VibeGuard Auditor'
-description: 'Stop vibecoding, start engineering. SOTA code quality gatekeeper that detects security issues, code smells, and technical debt.'
+description: 'Anti-slop CI/CD gatekeeper detecting security, code smells, AI slop, and git anti-patterns with 0-1000 scoring.'
 author: 'fabriziosalmi'
 branding:
   icon: 'shield'
