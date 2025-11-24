@@ -59,7 +59,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run VibeGuard Auditor
-        uses: fabriziosalmi/vibe-check@v1
+        uses: fabriziosalmi/vibe-check@v1.2.0
         with:
           threshold: 850  # Optional: Default is 800
 ```
@@ -70,7 +70,7 @@ Enable **double penalties** and **fail-fast** on critical security issues:
 
 ```yaml
       - name: Run VibeGuard (Brutal Mode)
-        uses: fabriziosalmi/vibe-check@v1
+        uses: fabriziosalmi/vibe-check@v1.2.0
         with:
           threshold: 900
           brutal_mode: true  # 💀 No mercy
