@@ -1,6 +1,6 @@
 # VibeGuard Auditor ⚡
 
-**v1.4.0** - SOTA Code Quality Scanner with Modular Architecture
+**v1.4.0** - Code Quality Scanner with Modular Architecture
 
 [![GitHub Actions](https://img.shields.io/badge/GitHub-Actions-blue)](https://github.com/features/actions)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
