@@ -1,0 +1,32 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+bin/
+build/
+dist/
+.eggs/
+*.egg-info/
+*.egg
+
+# Node.js
+node_modules/
+npm-debug.log*
+
+# Unit test / coverage reports
+.coverage
+.pytest_cache/
+
+# Environments
+.env
+.venv
+venv/
+env/
+
+# IDEs and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
