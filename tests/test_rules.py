@@ -49,12 +49,17 @@ def test_rules_manager_ignores_rules():
 def test_rules_manager_get_rule_by_id():
     """Test retrieving a specific rule by ID"""
     rules_manager = RulesManager()
-    rule = rules_manager.get_rule_by_id('SEC01')
     
+    # Test existing rule
+    rule = rules_manager.get_rule_by_id('SEC01')
     assert rule is not None
     assert rule['id'] == 'SEC01'
     assert 'weight' in rule
     assert 'type' in rule
+    
+    # Test non-existing rule
+    non_existent_rule = rules_manager.get_rule_by_id('NONEXISTENT_999')
+    assert non_existent_rule is None
 
 
 def test_rules_manager_get_critical_rules():
