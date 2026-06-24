@@ -165,7 +165,7 @@ vibe-check/
 │   ├── test_violations.js   # JS violations for testing
 │   └── test_violations.md   # Documentation violations
 ├── vibeguard.py          # Main entry point (REFACTORED)
-├── vibeguard.py              # Legacy entry point (deprecated)
+├── vibeguard_legacy.py   # Legacy entry point (deprecated)
 ├── requirements.txt          # Python dependencies
 ├── action.yml                # GitHub Action definition
 ├── Dockerfile                # Container definition
